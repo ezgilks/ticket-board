@@ -16,6 +16,8 @@ const EnvSchema = z.object({
   REDIS_URL: z.string().optional(),
   // Optional: without it, tickets are created without embeddings or AI triage.
   AI_SERVICE_URL: z.string().optional(),
+  // Shared secret sent to ai-service, which has a public URL in production.
+  AI_SERVICE_TOKEN: z.string().optional(),
 });
 
 export const config = EnvSchema.parse(process.env);

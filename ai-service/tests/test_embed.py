@@ -36,3 +36,11 @@ def test_real_model_puts_similar_meanings_close_together():
         ["Login button does nothing", "Users can't sign in to their account", "Change the footer font color"]
     )
     assert cosine(login_a, login_b) > cosine(login_a, unrelated) + 0.2
+
+
+def test_service_token_is_enforced_when_configured(client, monkeypatch):
+    monkeypatch.setenv("AI_SERVICE_TOKEN", "s3cret")
+    body = {"texts": ["hello"]}
+    assert client.post("/embed", json=body).status_code == 401
+    assert client.post("/embed", json=body, headers={"X-Service-Token": "wrong"}).status_code == 401
+    assert client.post("/embed", json=body, headers={"X-Service-Token": "s3cret"}).status_code == 200

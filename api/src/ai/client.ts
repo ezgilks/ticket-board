@@ -19,7 +19,10 @@ export function aiEnabled() {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${config.AI_SERVICE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(config.AI_SERVICE_TOKEN ? { "X-Service-Token": config.AI_SERVICE_TOKEN } : {}),
+    },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });

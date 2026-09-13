@@ -5,14 +5,27 @@ this service only does math on text it is handed. That keeps it trivially scalab
 and replaceable.
 """
 
+import hmac
+import os
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.embeddings import DIMENSIONS, MODEL_NAME, Embedder, get_embedder
 from app.triage import Label, Priority, TriageService, build_provider
+
+
+def require_service_token(x_service_token: Annotated[str | None, Header()] = None) -> None:
+    """In production this service has a public URL, so anyone could call it and spend the
+    LLM quota. When AI_SERVICE_TOKEN is set, only callers holding it (the API) get through."""
+    expected = os.environ.get("AI_SERVICE_TOKEN")
+    # compare_digest takes the same time whether the first or last character differs,
+    # so response timing can't be used to guess the token one character at a time.
+    if expected and not hmac.compare_digest(x_service_token or "", expected):
+        raise HTTPException(status_code=401, detail="invalid service token")
+
 
 app = FastAPI(title="Ticket Board AI service")
 
@@ -44,7 +57,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/embed", response_model=EmbedResponse)
+@app.post("/embed", response_model=EmbedResponse, dependencies=[Depends(require_service_token)])
 def embed(req: EmbedRequest, embedder: EmbedderDep) -> EmbedResponse:
     # A plain `def` (not async): FastAPI runs it in a thread pool, so CPU-heavy
     # encoding doesn't block the event loop from answering other requests.
@@ -62,7 +75,7 @@ class TriageResponse(BaseModel):
     provider: str
 
 
-@app.post("/triage", response_model=TriageResponse)
+@app.post("/triage", response_model=TriageResponse, dependencies=[Depends(require_service_token)])
 def triage(req: TriageRequest, service: TriageDep) -> TriageResponse:
     result, provider = service.triage(req.title, req.description)
     return TriageResponse(labels=result.labels, priority=result.priority, provider=provider)
