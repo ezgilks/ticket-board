@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, tokenStore } from "../lib/api";
+import { disconnectSocket } from "../lib/socket";
 import type { User } from "../lib/types";
 
 interface AuthState {
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     tokenStore.clear();
+    disconnectSocket();
     setUser(null);
   }, []);
 

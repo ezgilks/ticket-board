@@ -1,4 +1,5 @@
 import {
+  type CollisionDetection,
   closestCorners,
   DndContext,
   type DragEndEvent,
@@ -7,12 +8,13 @@ import {
   type DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
 import { Header } from "../components/Header";
@@ -21,10 +23,23 @@ import { type TicketPatch, TicketModal } from "../components/TicketModal";
 import { api } from "../lib/api";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
 import type { Board, Column, Ticket } from "../lib/types";
+import { type BoardEvent, useBoardSocket } from "../lib/useBoardSocket";
+
+// Collision = "what is the dragged card over right now?". Use the pointer's actual
+// position, preferring a ticket over the column containing it. Rectangle-based checks
+// misfire on kanban boards: once a card jumps columns mid-drag its measured rect moves too.
+// Keyboard drags have no pointer, so they fall back to closest corners.
+const collisionDetection: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  if (hits.length === 0) return closestCorners(args);
+  const tickets = hits.filter((h) => h.data?.droppableContainer.data.current?.type === "ticket");
+  return tickets.length ? tickets : hits;
+};
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
@@ -33,6 +48,7 @@ export function BoardPage() {
 
   // Snapshot taken when a drag starts, so a failed or cancelled drag can be undone.
   const dragStart = useRef<{ board: Board; columnId: string; index: number } | null>(null);
+  const activeTicketId = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -46,6 +62,36 @@ export function BoardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Changes pushed by other users. While this user is mid-drag, a remote update to
+  // the dragged ticket is ignored — the drop will overwrite it anyway.
+  const onEvent = useCallback(
+    (e: BoardEvent) => {
+      switch (e.type) {
+        case "ticket:upserted":
+          if (dragStart.current && activeTicketId.current === e.ticket.id) return;
+          setBoard((b) => (b ? upsertTicket(b, e.ticket) : b));
+          break;
+        case "ticket:deleted":
+          setBoard((b) => (b ? removeTicket(b, e.ticketId) : b));
+          break;
+        case "column:upserted":
+          setBoard((b) => (b ? upsertColumn(b, e.column) : b));
+          break;
+        case "column:deleted":
+          setBoard((b) => (b ? removeColumn(b, e.columnId) : b));
+          break;
+        case "board:refresh":
+          load();
+          break;
+        case "board:deleted":
+          navigate("/", { replace: true });
+          break;
+      }
+    },
+    [load, navigate],
+  );
+  useBoardSocket(boardId, onEvent, load);
 
   // PointerSensor needs 5px of movement before a drag starts, so plain clicks still open the modal.
   const sensors = useSensors(
@@ -72,6 +118,7 @@ export function BoardPage() {
     const found = findTicket(board, String(active.id));
     if (!found) return;
     dragStart.current = { board, columnId: found.column.id, index: found.index };
+    activeTicketId.current = found.ticket.id;
     setActiveTicket(found.ticket);
   }
 
@@ -94,6 +141,7 @@ export function BoardPage() {
     setActiveTicket(null);
     const start = dragStart.current;
     dragStart.current = null;
+    activeTicketId.current = null;
     if (!board || !start) return;
 
     const ticketId = String(active.id);
@@ -124,6 +172,7 @@ export function BoardPage() {
   function onDragCancel() {
     if (dragStart.current) setBoard(dragStart.current.board);
     dragStart.current = null;
+    activeTicketId.current = null;
     setActiveTicket(null);
   }
 
@@ -184,7 +233,7 @@ export function BoardPage() {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}

@@ -27,6 +27,7 @@ export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColu
 
   return (
     <section
+      ref={setNodeRef}
       aria-label={column.name}
       className={`flex w-72 shrink-0 flex-col rounded-xl bg-slate-100 p-3 ${isOver ? "ring-2 ring-indigo-300" : ""}`}
     >
@@ -45,7 +46,7 @@ export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColu
       </div>
 
       <SortableContext items={column.tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div ref={setNodeRef} className="flex min-h-16 flex-1 flex-col gap-2">
+        <div className="flex min-h-16 flex-1 flex-col gap-2">
           {column.tickets.map((t) => (
             <TicketCard key={t.id} ticket={t} onOpen={onOpenTicket} />
           ))}
