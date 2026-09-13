@@ -19,8 +19,9 @@ model User {
   name         String
   createdAt    DateTime @default(now())
 
-  boards  Board[]
-  tickets Ticket[]
+  boards      Board[]
+  tickets     Ticket[]
+  memberships BoardMember[]
 }
 
 model Board {
@@ -32,6 +33,27 @@ model Board {
   owner   User     @relation(fields: [ownerId], references: [id])
   columns Column[]
   tickets Ticket[]
+  members BoardMember[]
+}
+
+// Who can see and edit a board. The owner gets an OWNER row too, so every
+// access check is one lookup on this table.
+model BoardMember {
+  role      MemberRole @default(MEMBER)
+  createdAt DateTime   @default(now())
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
 }
 
 model Column {
@@ -43,6 +65,8 @@ model Column {
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   tickets Ticket[]
+
+  @@index([boardId, position])
 }
 
 model Ticket {
@@ -63,6 +87,18 @@ model Ticket {
 
   assigneeId String?
   assignee   User?   @relation(fields: [assigneeId], references: [id])
+
+  // 384-dim sentence embedding of title + description, written by the API after
+  // calling ai-service. Prisma can't type pgvector, so it's read/written with raw SQL.
+  // The HNSW index on it is created in the migration SQL.
+  embedding Unsupported("vector(384)")?
+
+  // What the AI suggested at creation: { labels, priority, provider, applied: string[] }.
+  // Kept separately from labels/priority so the UI can show where a value came from.
+  aiTriage Json?
+
+  @@index([columnId, position])
+  @@index([boardId])
 }
 
 enum Priority {

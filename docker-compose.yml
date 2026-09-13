@@ -1,3 +1,8 @@
+# `docker compose up -d`                    → just Postgres + Redis (for `npm run dev` locally)
+# `docker compose --profile app up --build` → the whole stack in containers, on http://localhost:8080
+# Pinned so renaming the folder never orphans the existing database volume.
+name: ticketboard
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -9,11 +14,47 @@ services:
       - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticket -d ticketboard"]
+      interval: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    
+
+  ai-service:
+    profiles: [app]
+    build: ./ai-service
+    environment:
+      # Leave blank for the free keyword rules, or set a key to use an LLM.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+  api:
+    profiles: [app]
+    build: ./api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      # Inside the Compose network, services reach each other by service name
+      # ("postgres", "redis", "ai-service") on their *container* ports.
+      DATABASE_URL: postgresql://ticket:ticket@postgres:5432/ticketboard?schema=public
+      REDIS_URL: redis://redis:6379
+      AI_SERVICE_URL: http://ai-service:8001
+      JWT_SECRET: ${JWT_SECRET:-local-compose-secret-change-me}
+      CORS_ORIGIN: http://localhost:8080
+
+  web:
+    profiles: [app]
+    build: ./web
+    depends_on: [api]
+    ports:
+      - "8080:80"
+
 volumes:
   postgres-data:

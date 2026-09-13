@@ -2,26 +2,53 @@
   "name": "api",
   "version": "1.0.0",
   "private": true,
-  "description": "",
+  "description": "Ticket Board API — Express, Prisma, Socket.io",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome lint .",
+    "typecheck": "tsc --noEmit",
+    "ai:backfill": "tsx scripts/backfill-embeddings.ts",
+    "db:migration": "prisma migrate dev --create-only",
+    "db:migrate": "prisma migrate deploy && prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "express": "^5.2.1"
+    "@socket.io/redis-adapter": "^8.3.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dataloader": "^2.2.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "graphql": "^17.0.2",
+    "graphql-yoga": "^5.23.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^7.10.0",
+    "redis": "^6.2.1",
+    "socket.io": "^4.8.3",
+    "zod": "^4.6.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.13",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.13.4",
-    "dotenv": "^17.4.2",
-    "prisma": "^7.10.0",
+    "@types/supertest": "^7.2.1",
+    "socket.io-client": "^4.8.3",
+    "supertest": "^7.2.2",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   }
 }

@@ -1,0 +1,41 @@
+# Render Blueprint: in the Render dashboard, "New → Blueprint" and point it at this repo.
+# Creates the API and the AI service as free Docker web services.
+# Postgres (Supabase) and Redis (Upstash) are external — see docs/DEPLOY.md.
+services:
+  - type: web
+    name: ticketboard-api
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL # Supabase *session pooler* URL (port 5432), see DEPLOY.md
+        sync: false
+      - key: REDIS_URL # Upstash rediss:// URL
+        sync: false
+      - key: CORS_ORIGIN # your Cloudflare Pages URL, e.g. https://ticketboard.pages.dev
+        sync: false
+      - key: AI_SERVICE_URL # e.g. https://ticketboard-ai.onrender.com
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true # Render generates a random secret
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
+
+  - type: web
+    name: ticketboard-ai
+    runtime: docker
+    plan: free
+    dockerContext: ./ai-service
+    dockerfilePath: ./ai-service/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: TRIAGE_PROVIDER
+        value: auto
+      - key: GEMINI_API_KEY # free key from Google AI Studio; blank = keyword rules
+        sync: false
+      - key: AI_SERVICE_TOKEN # copy the value Render generated for ticketboard-api
+        sync: false
