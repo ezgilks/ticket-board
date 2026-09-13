@@ -19,3 +19,9 @@ updates:
   - package-ecosystem: pip
     directory: /ai-service
     schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directories: [/api, /web, /ai-service]
+    schedule: { interval: monthly }
+  - package-ecosystem: terraform
+    directory: /infra
+    schedule: { interval: monthly }

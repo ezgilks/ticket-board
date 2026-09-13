@@ -101,3 +101,25 @@ jobs:
       # Real-model tests are skipped here (RUN_MODEL_TESTS unset) to keep CI fast.
       - name: Test
         run: pytest -q
+
+  # Catches a broken Dockerfile before a deploy does.
+  docker:
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ticketboard-api ./api
+      - run: docker build -t ticketboard-web ./web
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check
+      # -backend=false: validate syntax and references without touching any AWS account.
+      - run: terraform init -backend=false
+      - run: terraform validate
