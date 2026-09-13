@@ -118,7 +118,7 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
       - run: terraform fmt -check
       # -backend=false: validate syntax and references without touching any AWS account.
       - run: terraform init -backend=false
