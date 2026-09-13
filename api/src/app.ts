@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { corsOrigins } from "./config.js";
+import { yoga } from "./graphql/index.js";
 import { authRouter } from "./routes/auth.js";
 import { boardsRouter } from "./routes/boards.js";
 import { columnsRouter } from "./routes/columns.js";
@@ -17,8 +18,13 @@ export function createApp() {
 
   // Behind Render's / AWS's load balancer, the client IP arrives in X-Forwarded-For.
   app.set("trust proxy", 1);
-  app.use(helmet()); // sensible security headers
   app.use(cors({ origin: corsOrigins }));
+
+  // GraphQL is mounted before helmet: helmet's Content-Security-Policy would block the
+  // GraphiQL explorer's scripts. Yoga parses its own request bodies.
+  app.use(yoga.graphqlEndpoint, yoga);
+
+  app.use(helmet()); // sensible security headers
   app.use(express.json({ limit: "100kb" }));
 
   app.get("/health", (_req, res) => {

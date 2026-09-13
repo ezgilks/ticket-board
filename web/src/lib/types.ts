@@ -67,3 +67,11 @@ export interface SimilarTicket {
   columnName: string;
   similarity: number;
 }
+
+export interface BoardAnalytics {
+  byColumn: { columnId: string; name: string; count: number }[];
+  byPriority: { priority: Priority; count: number }[];
+  topLabels: { label: string; count: number }[];
+  createdPerDay: { day: string; count: number }[];
+  aiTriaged: { triaged: number; total: number };
+}

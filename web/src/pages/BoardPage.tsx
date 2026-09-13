@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
 import { Header } from "../components/Header";
+import { InsightsPanel } from "../components/InsightsPanel";
 import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
@@ -46,6 +47,7 @@ export function BoardPage() {
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [newColumn, setNewColumn] = useState("");
+  const [showInsights, setShowInsights] = useState(false);
 
   // Snapshot taken when a drag starts, so a failed or cancelled drag can be undone.
   const dragStart = useRef<{ board: Board; columnId: string; index: number } | null>(null);
@@ -229,6 +231,9 @@ export function BoardPage() {
               Share
             </button>
           )}
+          <button type="button" onClick={() => setShowInsights((v) => !v)} className="btn-ghost">
+            Insights
+          </button>
         </div>
       </Header>
 
@@ -265,6 +270,8 @@ export function BoardPage() {
         {/* The floating copy that follows the pointer while dragging. */}
         <DragOverlay>{activeTicket && <TicketCard ticket={activeTicket} overlay />}</DragOverlay>
       </DndContext>
+
+      {showInsights && boardId && <InsightsPanel boardId={boardId} onClose={() => setShowInsights(false)} />}
 
       {openTicket && (
         <TicketModal
