@@ -88,6 +88,11 @@ model Ticket {
   assigneeId String?
   assignee   User?   @relation(fields: [assigneeId], references: [id])
 
+  // 384-dim sentence embedding of title + description, written by the API after
+  // calling ai-service. Prisma can't type pgvector, so it's read/written with raw SQL.
+  // The HNSW index on it is created in the migration SQL.
+  embedding Unsupported("vector(384)")?
+
   @@index([columnId, position])
   @@index([boardId])
 }

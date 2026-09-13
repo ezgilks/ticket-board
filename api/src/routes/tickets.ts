@@ -1,8 +1,10 @@
 import { Router } from "express";
+import { enrichInBackground } from "../ai/enrich.js";
 import { publishBoardEvent } from "../events.js";
 import { originSocketId } from "../lib/origin.js";
 import { idParam } from "../lib/params.js";
 import { userIdOf } from "../middleware/auth.js";
+import { findSimilarTickets } from "../services/similar.js";
 import * as tickets from "../services/tickets.js";
 
 export const ticketsRouter = Router();
@@ -10,8 +12,14 @@ export const ticketsRouter = Router();
 ticketsRouter.patch("/:ticketId", async (req, res) => {
   const input = tickets.UpdateTicketInput.parse(req.body);
   const ticket = await tickets.updateTicket(userIdOf(req), idParam(req, "ticketId"), input);
+  // Text changed → its meaning may have too, so recompute the embedding.
+  if (input.title !== undefined || input.description !== undefined) enrichInBackground(ticket.id);
   await publishBoardEvent(ticket.boardId, { type: "ticket:upserted", ticket }, originSocketId(req));
   res.json({ ticket });
+});
+
+ticketsRouter.get("/:ticketId/similar", async (req, res) => {
+  res.json({ similar: await findSimilarTickets(userIdOf(req), idParam(req, "ticketId")) });
 });
 
 ticketsRouter.post("/:ticketId/move", async (req, res) => {

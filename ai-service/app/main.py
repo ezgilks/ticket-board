@@ -1,0 +1,41 @@
+"""ai-service: stateless text-in, vectors/labels-out.
+
+Invariant: this service never touches the database. The Express API owns all data;
+this service only does math on text it is handed. That keeps it trivially scalable
+and replaceable.
+"""
+
+from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from pydantic import BaseModel, Field
+
+from app.embeddings import DIMENSIONS, MODEL_NAME, Embedder, get_embedder
+
+app = FastAPI(title="Ticket Board AI service")
+
+# Dependency injection: the route asks for "an Embedder"; FastAPI supplies one.
+# Tests override get_embedder with a fake, so they never load the real model.
+EmbedderDep = Annotated[Embedder, Depends(get_embedder)]
+
+
+class EmbedRequest(BaseModel):
+    texts: list[Annotated[str, Field(max_length=8000)]] = Field(min_length=1, max_length=64)
+
+
+class EmbedResponse(BaseModel):
+    model: str
+    dimensions: int
+    vectors: list[list[float]]
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/embed", response_model=EmbedResponse)
+def embed(req: EmbedRequest, embedder: EmbedderDep) -> EmbedResponse:
+    # A plain `def` (not async): FastAPI runs it in a thread pool, so CPU-heavy
+    # encoding doesn't block the event loop from answering other requests.
+    return EmbedResponse(model=MODEL_NAME, dimensions=DIMENSIONS, vectors=embedder.embed(req.texts))

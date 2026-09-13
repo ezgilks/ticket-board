@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { enrichInBackground } from "../ai/enrich.js";
 import { publishBoardEvent } from "../events.js";
 import { originSocketId } from "../lib/origin.js";
 import { idParam } from "../lib/params.js";
@@ -60,4 +61,5 @@ boardsRouter.post("/:boardId/tickets", async (req, res) => {
   const ticket = await tickets.createTicket(userIdOf(req), boardId, input);
   await publishBoardEvent(boardId, { type: "ticket:upserted", ticket }, originSocketId(req));
   res.status(201).json({ ticket });
+  enrichInBackground(ticket.id); // after responding — see ai/enrich.ts
 });

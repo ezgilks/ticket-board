@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
 import { Header } from "../components/Header";
+import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
 import { api } from "../lib/api";
@@ -273,7 +274,9 @@ export function BoardPage() {
           onSave={(patch) => saveTicket(openTicket.id, patch)}
           onDelete={() => deleteTicket(openTicket.id)}
           onClose={() => setOpenTicketId(null)}
-        />
+        >
+          <SimilarTickets ticketId={openTicket.id} onOpen={setOpenTicketId} />
+        </TicketModal>
       )}
     </div>
   );
