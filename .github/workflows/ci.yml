@@ -61,6 +61,28 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build (includes typecheck)
+        run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
   ai-service:
     runs-on: ubuntu-latest
     defaults:
