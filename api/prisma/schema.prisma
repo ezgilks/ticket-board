@@ -93,6 +93,10 @@ model Ticket {
   // The HNSW index on it is created in the migration SQL.
   embedding Unsupported("vector(384)")?
 
+  // What the AI suggested at creation: { labels, priority, provider, applied: string[] }.
+  // Kept separately from labels/priority so the UI can show where a value came from.
+  aiTriage Json?
+
   @@index([columnId, position])
   @@index([boardId])
 }

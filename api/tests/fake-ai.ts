@@ -29,7 +29,13 @@ export async function startFakeAi(
       const body = JSON.parse(raw || "{}");
       res.setHeader("Content-Type", "application/json");
       if (req.url === "/embed") res.end(JSON.stringify({ vectors: body.texts.map(wordVector) }));
-      else if (req.url === "/triage") res.end(JSON.stringify(triage(body)));
+      else if (req.url === "/triage") {
+        try {
+          res.end(JSON.stringify(triage(body)));
+        } catch {
+          res.writeHead(500).end("{}");
+        }
+      }
       else res.writeHead(404).end("{}");
     });
   });

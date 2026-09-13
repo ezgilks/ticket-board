@@ -97,6 +97,15 @@ export function TicketModal({ ticket, members, onSave, onDelete, onClose, childr
           <input className="input" value={labels} onChange={(e) => setLabels(e.target.value)} />
         </label>
 
+        {ticket.aiTriage && (
+          <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700">
+            ✦ AI suggested <strong>{ticket.aiTriage.priority.toLowerCase()}</strong> priority
+            {ticket.aiTriage.labels.length > 0 && <> and labels {ticket.aiTriage.labels.join(", ")}</>}
+            <span className="text-violet-400"> · {ticket.aiTriage.provider}</span>
+            {ticket.aiTriage.applied.length === 0 && <span className="text-violet-400"> · not applied (set by you)</span>}
+          </p>
+        )}
+
         {children}
 
         {error && (

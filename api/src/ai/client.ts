@@ -5,6 +5,13 @@ import { config } from "../config.js";
 // Generous timeout: on a free host, ai-service sleeps when idle and takes a while to wake.
 const TIMEOUT_MS = 60_000;
 
+export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export interface TriageSuggestion {
+  labels: string[];
+  priority: Priority;
+  provider: string;
+}
+
 export function aiEnabled() {
   return Boolean(config.AI_SERVICE_URL);
 }
@@ -23,4 +30,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export async function embed(texts: string[]): Promise<number[][]> {
   const res = await post<{ vectors: number[][] }>("/embed", { texts });
   return res.vectors;
+}
+
+export function triage(title: string, description: string | null): Promise<TriageSuggestion> {
+  return post<TriageSuggestion>("/triage", { title, description });
 }

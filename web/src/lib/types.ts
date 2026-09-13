@@ -8,6 +8,13 @@ export interface User {
   name: string;
 }
 
+export interface AiTriage {
+  labels: string[];
+  priority: Priority;
+  provider: string;
+  applied: ("priority" | "labels")[];
+}
+
 export interface Ticket {
   id: string;
   title: string;
@@ -19,6 +26,7 @@ export interface Ticket {
   boardId: string;
   assigneeId: string | null;
   assignee: User | null;
+  aiTriage: AiTriage | null;
   createdAt: string;
   updatedAt: string;
 }

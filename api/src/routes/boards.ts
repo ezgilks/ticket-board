@@ -61,5 +61,10 @@ boardsRouter.post("/:boardId/tickets", async (req, res) => {
   const ticket = await tickets.createTicket(userIdOf(req), boardId, input);
   await publishBoardEvent(boardId, { type: "ticket:upserted", ticket }, originSocketId(req));
   res.status(201).json({ ticket });
-  enrichInBackground(ticket.id); // after responding — see ai/enrich.ts
+  // After responding — see ai/enrich.ts. AI only fills in what the user didn't set.
+  enrichInBackground(ticket.id, {
+    triage: true,
+    applyPriority: input.priority === undefined,
+    applyLabels: !input.labels?.length,
+  });
 });
