@@ -18,6 +18,7 @@ export function TicketCard({ ticket, onOpen, overlay = false }: Props) {
   });
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: a sortable card wraps block content, which <button> can't contain
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
