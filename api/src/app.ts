@@ -9,7 +9,6 @@ import { columnsRouter } from "./routes/columns.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
-import { authRateLimit } from "./middleware/rateLimit.js";
 
 // Building the app is separate from listening on a port, so tests can
 // hand the app straight to Supertest without opening a real socket.
@@ -31,7 +30,7 @@ export function createApp() {
     res.json({ status: "ok" });
   });
 
-  app.use("/auth", authRateLimit, authRouter);
+  app.use("/auth", authRouter);
   // Everything below requires a valid token.
   app.use("/boards", requireAuth, boardsRouter);
   app.use("/columns", requireAuth, columnsRouter);

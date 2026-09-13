@@ -8,6 +8,7 @@ export const authRateLimit = rateLimit({
   limit: 20,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => config.NODE_ENV === "test",
+  // Off in tests unless a test opts in, so the suite can register many users quickly.
+  skip: () => config.NODE_ENV === "test" && process.env["RATE_LIMIT_IN_TESTS"] !== "1",
   message: { error: "Too many attempts, try again later" },
 });
