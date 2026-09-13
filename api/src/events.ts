@@ -1,3 +1,4 @@
+import { invalidateBoard } from "./cache.js";
 import { getIO, roomFor } from "./realtime.js";
 
 // Everything that can change on a board, as pushed to connected clients.
@@ -11,12 +12,14 @@ export type BoardEvent =
 
 /**
  * The single choke point for "a board changed". Every write calls this, so
- * real-time delivery (and, later, cache invalidation) can't be forgotten in one route.
+ * cache invalidation and real-time delivery can't be forgotten in one route.
  *
  * originSocketId: the socket of the user who made the change. They already applied
  * it optimistically, so they're excluded from the broadcast.
  */
 export async function publishBoardEvent(boardId: string, event: BoardEvent, originSocketId?: string) {
+  // Invalidate first: a client reacting to the event may refetch immediately.
+  await invalidateBoard(boardId);
   const io = getIO();
   if (!io) return; // tests that don't start a socket server
   const room = io.to(roomFor(boardId));

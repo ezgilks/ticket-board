@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getCachedBoard, setCachedBoard } from "../cache.js";
 import { prisma } from "../db.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
 import { assertMember, assertOwner } from "./access.js";
@@ -32,9 +33,23 @@ export async function createBoard(userId: string, input: z.infer<typeof BoardInp
 }
 
 // The full board payload the UI renders: columns in order, tickets in order.
+// Membership is checked *before* the cache: authorization is never cached.
 export async function getBoard(userId: string, boardId: string) {
   await assertMember(userId, boardId);
-  const board = await prisma.board.findUnique({
+
+  const cached = await getCachedBoard<BoardPayload>(boardId);
+  if (cached) return cached;
+
+  const board = await loadBoard(boardId);
+  if (!board) throw notFound("Board not found");
+  await setCachedBoard(boardId, board);
+  return board;
+}
+
+type BoardPayload = NonNullable<Awaited<ReturnType<typeof loadBoard>>>;
+
+function loadBoard(boardId: string) {
+  return prisma.board.findUnique({
     where: { id: boardId },
     include: {
       columns: {
@@ -46,8 +61,6 @@ export async function getBoard(userId: string, boardId: string) {
       members: { include: { user: userSummary }, orderBy: { createdAt: "asc" } },
     },
   });
-  if (!board) throw notFound("Board not found");
-  return board;
 }
 
 export async function renameBoard(userId: string, boardId: string, input: z.infer<typeof BoardInput>) {

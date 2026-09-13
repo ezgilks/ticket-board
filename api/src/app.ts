@@ -8,12 +8,15 @@ import { columnsRouter } from "./routes/columns.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
+import { authRateLimit } from "./middleware/rateLimit.js";
 
 // Building the app is separate from listening on a port, so tests can
 // hand the app straight to Supertest without opening a real socket.
 export function createApp() {
   const app = express();
 
+  // Behind Render's / AWS's load balancer, the client IP arrives in X-Forwarded-For.
+  app.set("trust proxy", 1);
   app.use(helmet()); // sensible security headers
   app.use(cors({ origin: corsOrigins }));
   app.use(express.json({ limit: "100kb" }));
@@ -22,7 +25,7 @@ export function createApp() {
     res.json({ status: "ok" });
   });
 
-  app.use("/auth", authRouter);
+  app.use("/auth", authRateLimit, authRouter);
   // Everything below requires a valid token.
   app.use("/boards", requireAuth, boardsRouter);
   app.use("/columns", requireAuth, columnsRouter);

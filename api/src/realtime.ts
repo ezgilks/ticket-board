@@ -1,7 +1,9 @@
 import type { Server as HttpServer } from "node:http";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { Server, type Socket } from "socket.io";
-import { corsOrigins } from "./config.js";
+import { config, corsOrigins } from "./config.js";
 import { verifyToken } from "./lib/jwt.js";
+import { getRedis } from "./redis.js";
 import { assertMember } from "./services/access.js";
 
 // Socket.io keeps a persistent connection open between browser and server, so
@@ -14,8 +16,25 @@ let io: Server | null = null;
 
 export const roomFor = (boardId: string) => `board:${boardId}`;
 
-export function initRealtime(server: HttpServer) {
+export async function initRealtime(server: HttpServer) {
   io = new Server(server, { cors: { origin: corsOrigins } });
+
+  // Without this, io.to(room).emit() only reaches sockets connected to *this*
+  // process. Run two API containers behind a load balancer and users on different
+  // containers never see each other's changes.
+  //
+  // The Redis adapter fixes that with pub/sub: every emit is also published to Redis,
+  // and every API instance subscribes and forwards it to its own local sockets.
+  const redis = getRedis();
+  if (redis && config.REDIS_URL) {
+    const pub = redis.duplicate();
+    const sub = redis.duplicate(); // a subscribed connection can't run other commands
+    pub.on("error", (err) => console.error("[redis pub]", err.message));
+    sub.on("error", (err) => console.error("[redis sub]", err.message));
+    await Promise.all([pub.connect(), sub.connect()]);
+    io.adapter(createAdapter(pub, sub));
+    serverClients.set(io, [pub, sub]);
+  }
 
   // Handshake auth: runs once per connection, before any events. Same JWT as REST.
   io.use((socket, next) => {
@@ -53,4 +72,12 @@ export function initRealtime(server: HttpServer) {
 
 export function getIO() {
   return io;
+}
+
+const serverClients = new WeakMap<Server, { quit: () => Promise<unknown> }[]>();
+
+// Close the server and its dedicated Redis connections (used by tests and shutdown).
+export async function closeRealtime(server: Server) {
+  await server.close();
+  await Promise.all((serverClients.get(server) ?? []).map((c) => c.quit()));
 }

@@ -1,6 +1,7 @@
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/db.js";
+import { getRedis } from "../src/redis.js";
 
 export const app = createApp();
 
@@ -9,6 +10,7 @@ export async function resetDb() {
   await prisma.$executeRawUnsafe(
     'TRUNCATE "Ticket", "Column", "BoardMember", "Board", "User" RESTART IDENTITY CASCADE',
   );
+  await getRedis()?.flushDb(); // only DB 1 — see vitest.config.ts
 }
 
 let counter = 0;

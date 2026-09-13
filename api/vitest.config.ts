@@ -8,14 +8,17 @@ const TEST_DATABASE_URL =
 export default defineConfig({
   test: {
     globalSetup: ["./tests/global-setup.ts"],
+    setupFiles: ["./tests/setup.ts"],
     // All test files share one database, so run them one at a time.
     fileParallelism: false,
     env: {
       NODE_ENV: "test",
       DATABASE_URL: TEST_DATABASE_URL,
       JWT_SECRET: "test-secret-at-least-16-chars",
-      // Blank = disabled. Tests don't need Redis or the AI service.
-      REDIS_URL: "",
+      // Redis logical DB 1, so tests never touch dev data in DB 0. Running the suite
+      // with the cache ON is deliberate: a missing invalidation shows up as a stale read.
+      REDIS_URL: process.env["TEST_REDIS_URL"] ?? "redis://localhost:6379/1",
+      // Blank = disabled. The AI service is faked where tests need it.
       AI_SERVICE_URL: "",
     },
   },

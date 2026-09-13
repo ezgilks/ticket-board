@@ -3,29 +3,31 @@ import type { AddressInfo } from "node:net";
 import { io as connect, type Socket } from "socket.io-client";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { initRealtime } from "../src/realtime.js";
+import type { Server as IOServer } from "socket.io";
+import { closeRealtime, getIO, initRealtime } from "../src/realtime.js";
 import { app, createBoard, registerUser, resetDb } from "./helpers.js";
 
 let server: Server;
+let io: IOServer;
 let url: string;
 const sockets: Socket[] = [];
 
 beforeAll(async () => {
   server = createServer(app);
-  initRealtime(server);
+  io = await initRealtime(server);
   await new Promise<void>((resolve) => server.listen(0, resolve)); // port 0 = any free port
   url = `http://localhost:${(server.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
   for (const s of sockets) s.disconnect();
-  await new Promise((resolve) => server.close(resolve));
+  await closeRealtime(io);
 });
 
 beforeEach(resetDb);
 
-function open(token: string | undefined) {
-  const socket = connect(url, { auth: token ? { token } : {}, transports: ["websocket"], forceNew: true });
+function open(token: string | undefined, target = url) {
+  const socket = connect(target, { auth: token ? { token } : {}, transports: ["websocket"], forceNew: true });
   sockets.push(socket);
   return socket;
 }
@@ -69,5 +71,29 @@ describe("realtime", () => {
     const event = await received;
     expect(event.type).toBe("ticket:upserted");
     expect(event.ticket?.title).toBe("Live!");
+  });
+
+  it("delivers events across API instances through the Redis adapter", async () => {
+    // Server B: a second, independent Socket.io server — as if it were another container.
+    const serverB = createServer(app);
+    const ioB = await initRealtime(serverB); // publishBoardEvent now emits via B
+    expect(getIO()).toBe(ioB);
+
+    const alice = await registerUser("Alice");
+    const board = await createBoard(alice.auth);
+
+    // Alice's socket is connected to server A only.
+    const socketOnA = open(alice.token);
+    expect(await join(socketOnA, board.id)).toEqual({ ok: true });
+
+    const received = nextEvent(socketOnA);
+    await request(app)
+      .post(`/boards/${board.id}/tickets`)
+      .set("Authorization", alice.auth)
+      .send({ title: "Cross-instance", columnId: board.columns[0].id });
+
+    // Emitted on B, published to Redis, picked up by A, delivered to Alice.
+    expect((await received).ticket?.title).toBe("Cross-instance");
+    await closeRealtime(ioB);
   });
 });
