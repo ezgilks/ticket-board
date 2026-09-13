@@ -15,3 +15,8 @@ coverage/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+
+# Private working notes — kept locally, not published
+docs/INTERVIEW.md
+HANDOFF.md
+CLAUDE.md

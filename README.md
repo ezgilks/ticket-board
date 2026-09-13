@@ -81,8 +81,3 @@ service, builds the Docker images, and validates the Terraform.
 
 - **Free, permanent:** [`docs/DEPLOY.md`](docs/DEPLOY.md) — Render + Supabase + Upstash + Cloudflare Pages.
 - **AWS, time-boxed:** [`infra/README.md`](infra/README.md) — Terraform for ECS Fargate, RDS, ElastiCache.
-
-## Docs
-
-- [`docs/INTERVIEW.md`](docs/INTERVIEW.md) — how each subsystem works, trade-offs, likely questions
-- [`HANDOFF.md`](HANDOFF.md) — plan, decisions, and current state

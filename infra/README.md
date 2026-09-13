@@ -104,8 +104,3 @@ to need a tweak on the first real run:
   the Service Connect proxy is ready, it exits and ECS restarts it. Expect a restart or two.
 - **RDS TLS:** see the comment above `aws_ssm_parameter.database_url`. If `prisma migrate deploy`
   rejects the `uselibpqcompat` parameter, drop it and set `NODE_EXTRA_CA_CERTS` to the RDS CA bundle instead.
-
-## Honest resume line
-
-*"Containerized and deployed to AWS ECS Fargate with RDS and ElastiCache, provisioned via Terraform."*
-Only write it once steps 4–7 have actually been done.
