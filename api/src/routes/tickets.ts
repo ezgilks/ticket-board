@@ -12,7 +12,7 @@ ticketsRouter.patch("/:ticketId", async (req, res) => {
 
 ticketsRouter.post("/:ticketId/move", async (req, res) => {
   const input = tickets.MoveTicketInput.parse(req.body);
-  res.json({ ticket: await tickets.moveTicket(userIdOf(req), idParam(req, "ticketId"), input) });
+  res.json(await tickets.moveTicket(userIdOf(req), idParam(req, "ticketId"), input));
 });
 
 ticketsRouter.delete("/:ticketId", async (req, res) => {

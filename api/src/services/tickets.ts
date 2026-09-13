@@ -130,10 +130,12 @@ export async function moveTicket(userId: string, ticketId: string, input: z.infe
       position = index + 1;
     }
 
-    return tx.ticket.update({
+    const moved = await tx.ticket.update({
       where: { id: ticketId },
       data: { columnId: input.columnId, position },
       include: withAssignee,
     });
+    // Clients need to know when sibling positions changed so they can refetch.
+    return { ticket: moved, rebalanced: Boolean(tooClose) };
   });
 }

@@ -69,6 +69,7 @@ describe("tickets", () => {
       .send({ columnId: todo.id, index: 1 });
 
     expect(res.body.ticket.position).toBe(1.5);
+    expect(res.body.rebalanced).toBe(false);
     expect(await titlesIn(todo.id)).toEqual(["A", "C", "B"]);
   });
 
