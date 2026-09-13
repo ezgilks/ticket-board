@@ -1,0 +1,17 @@
+{
+  "$schema": "https://biomejs.dev/schemas/latest/schema.json",
+  "files": {
+    "includes": ["**", "!**/node_modules", "!**/dist", "!**/src/generated", "!**/coverage", "!**/.claude"]
+  },
+  "formatter": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": { "noNonNullAssertion": "off" },
+      "complexity": { "useLiteralKeys": "off" },
+      "suspicious": { "noExplicitAny": "error" }
+    }
+  },
+  "assist": { "enabled": false }
+}

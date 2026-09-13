@@ -1,0 +1,15 @@
+# Opens PRs when dependencies have updates or security fixes.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    schedule: { interval: weekly }
+    # Prisma is pinned deliberately (8.x RC breaks the workflow) — see CLAUDE.md.
+    ignore:
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

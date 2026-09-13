@@ -1,0 +1,58 @@
+name: CI
+
+# Runs on every push to main and on every pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    # A throwaway Postgres (with pgvector) just for this job's tests.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ticket
+          POSTGRES_PASSWORD: ticket
+          POSTGRES_DB: ticketboard_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ticket"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://ticket:ticket@localhost:5433/ticketboard_test
+      # prisma generate reads the config file, which needs *a* URL to exist.
+      DATABASE_URL: postgresql://ticket:ticket@localhost:5433/ticketboard_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      # Gated at "critical": the 4 known "high" findings are in the Prisma CLI's
+      # transitive deps (mysql2, deepmerge-ts), which never run in this app.
+      # @prisma/client peer-depends on the CLI, so --omit=dev can't exclude them.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
