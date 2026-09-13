@@ -1,5 +1,7 @@
 # ---- build stage: install everything, generate the Prisma client, compile TypeScript ----
 FROM node:24-slim AS build
+# Prisma's engines link against OpenSSL, which the slim image leaves out.
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -11,6 +13,7 @@ RUN DATABASE_URL=postgresql://build:build@localhost/build npx prisma generate &&
 # Multi-stage builds keep the TypeScript compiler, test tools, and source out of the
 # final image: smaller, faster to deploy, less attack surface.
 FROM node:24-slim
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
