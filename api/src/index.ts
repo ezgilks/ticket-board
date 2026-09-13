@@ -1,12 +1,8 @@
-import express from "express";
+import { createApp } from "./app.js";
+import { config } from "./config.js";
 
-const app = express();
-const PORT = 3000;
+const app = createApp();
 
-app.get("/health", (req, res) => {
-    res.json({status: "ok"});
-});
-
-app.listen(PORT, () => {
-    console.log(`API listening on hhtp://localhost:${PORT}`);
+app.listen(config.PORT, () => {
+  console.log(`API listening on http://localhost:${config.PORT}`);
 });
