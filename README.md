@@ -4,6 +4,8 @@ A real-time collaborative kanban board with an AI triage layer — a small Linea
 Drag a ticket and every teammate's screen updates instantly. New tickets are auto-labelled
 and prioritised by an LLM, and a vector search surfaces similar existing tickets.
 
+**Live demo:** https://ticket-board-xi.vercel.app — the free-tier API sleeps when idle, so the first request can take ~1 minute.
+
 ![Ticket modal showing semantically similar tickets](docs/screenshot.jpg)
 
 ## Features
