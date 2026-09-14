@@ -16,7 +16,7 @@ services:
         sync: false
       - key: REDIS_URL # Upstash rediss:// URL
         sync: false
-      - key: CORS_ORIGIN # your Cloudflare Pages URL, e.g. https://ticketboard.pages.dev
+      - key: CORS_ORIGIN # your Vercel URL, e.g. https://ticketboard.vercel.app
         sync: false
       - key: AI_SERVICE_URL # e.g. https://ticketboard-ai.onrender.com
         sync: false

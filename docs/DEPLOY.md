@@ -2,7 +2,7 @@
 
 | Piece | Host | Why this one |
 |---|---|---|
-| `web/` | Cloudflare Pages | Free static hosting, global CDN, no card |
+| `web/` | Vercel (Hobby) | Free static hosting, global CDN, detects Vite automatically |
 | `api/` + `ai-service/` | Render (free web services) | Runs Docker images, supports WebSockets, no card |
 | Postgres + pgvector | Supabase | pgvector built in; the free database doesn't expire |
 | Redis | Upstash | Free tier (500K commands/mo), supports pub/sub |
@@ -40,7 +40,7 @@ needs a URL from the one before it.
      Leave it blank to use the keyword rules.
    - `ticketboard-api` → `DATABASE_URL` (step 1), `REDIS_URL` (step 2),
      `AI_SERVICE_URL` = `https://ticketboard-ai.onrender.com` (check the real URL after it's created),
-     `CORS_ORIGIN` = your Pages URL (step 4 — you can use a placeholder and update it after).
+     `CORS_ORIGIN` = your frontend URL (step 4 — use a placeholder and update it after).
 4. Once created, copy `AI_SERVICE_TOKEN` from the **api** service's Environment tab into the
    **ai** service's `AI_SERVICE_TOKEN`, so the API can call the AI service and nobody else can.
 5. Check: `curl https://ticketboard-api.onrender.com/health` → `{"status":"ok"}`.
@@ -51,19 +51,16 @@ needs a URL from the one before it.
 - 512MB RAM. ai-service uses ~400MB with the model loaded (measured in Docker). That fits,
   but not with much room. If it gets OOM-killed, see "If ai-service runs out of memory" below.
 
-## 4. Cloudflare Pages (frontend)
+## 4. Vercel (frontend)
 
-1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git** → the repo.
-2. Build settings:
-   - Root directory: `web`
-   - Build command: `npm run build`
-   - Output directory: `dist`
-3. Environment variables (baked in at build time):
+1. vercel.com → sign up with GitHub → **Add New… → Project** → import `ticket-board`.
+2. **Root Directory:** `web` (Vercel then detects Vite: build `npm run build`, output `dist`).
+3. **Environment Variables** (baked into the bundle at build time):
    - `VITE_API_URL` = `https://ticketboard-api.onrender.com`
    - `VITE_SOCKET_URL` = `https://ticketboard-api.onrender.com`
-4. Deploy. Pages serves `index.html` for unknown paths automatically (no `404.html`), so
-   deep links like `/boards/<id>` work.
-5. Go back to Render and set the API's `CORS_ORIGIN` to the Pages URL.
+4. Deploy. `web/vercel.json` rewrites every path to `index.html`, so deep links like
+   `/boards/<id>` work on refresh.
+5. Back in Render, set the API's `CORS_ORIGIN` to the Vercel URL (no trailing slash) and redeploy.
 
 ## 5. Smoke test
 

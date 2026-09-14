@@ -39,7 +39,7 @@ and prioritised by an LLM, and a vector search surfaces similar existing tickets
 | **API** | Node 24, Express 5, TypeScript, Prisma 7, Zod, Socket.io, graphql-yoga, DataLoader, Vitest + Supertest |
 | **AI service** | Python 3.12, FastAPI, sentence-transformers, Anthropic SDK, pytest |
 | **Data** | PostgreSQL 16 + pgvector (HNSW), Redis 7 |
-| **Infra** | Docker, Docker Compose, GitHub Actions, Render / Supabase / Upstash / Cloudflare Pages, Terraform (AWS ECS Fargate, RDS, ElastiCache, ALB) |
+| **Infra** | Docker, Docker Compose, GitHub Actions, Render / Supabase / Upstash / Vercel, Terraform (AWS ECS Fargate, RDS, ElastiCache, ALB) |
 
 ## Run it locally
 
@@ -79,5 +79,5 @@ service, builds the Docker images, and validates the Terraform.
 
 ## Deploy
 
-- **Free, permanent:** [`docs/DEPLOY.md`](docs/DEPLOY.md) — Render + Supabase + Upstash + Cloudflare Pages.
+- **Free, permanent:** [`docs/DEPLOY.md`](docs/DEPLOY.md) — Render + Supabase + Upstash + Vercel.
 - **AWS, time-boxed:** [`infra/README.md`](infra/README.md) — Terraform for ECS Fargate, RDS, ElastiCache.
