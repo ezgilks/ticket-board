@@ -26,6 +26,18 @@ export function createApp() {
   app.use(helmet()); // sensible security headers
   app.use(express.json({ limit: "100kb" }));
 
+  // TEMPORARY diagnostic (removed in the next commit): shows the caller's own forwarding headers.
+  app.get("/debug/forwarded", (req, res) => {
+    res.json({
+      xForwardedFor: req.headers["x-forwarded-for"],
+      trueClientIp: req.headers["true-client-ip"],
+      cfConnectingIp: req.headers["cf-connecting-ip"],
+      xRealIp: req.headers["x-real-ip"],
+      socketAddress: req.socket.remoteAddress,
+      expressIp: req.ip,
+    });
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
