@@ -7,6 +7,9 @@ import { z } from "zod";
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(3000),
+  // Proxy hops in front of the API. Render = 3 (Cloudflare edge → Render load balancer →
+  // in-container proxy), measured 2026-09-13. Local Vite/nginx proxy = 1.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(1),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),

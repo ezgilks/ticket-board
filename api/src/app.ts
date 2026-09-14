@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { corsOrigins } from "./config.js";
+import { config, corsOrigins } from "./config.js";
 import { yoga } from "./graphql/index.js";
 import { authRouter } from "./routes/auth.js";
 import { boardsRouter } from "./routes/boards.js";
@@ -15,8 +15,11 @@ import { errorHandler } from "./middleware/error.js";
 export function createApp() {
   const app = express();
 
-  // Behind Render's / AWS's load balancer, the client IP arrives in X-Forwarded-For.
-  app.set("trust proxy", 1);
+  // How many proxies sit in front of the app. Express uses it to pick the real visitor IP out of
+  // X-Forwarded-For (counting from the right), which the login rate limiter keys on.
+  // Too low → every visitor looks like the proxy and shares one limit.
+  // Too high → a visitor can fake their IP by sending their own X-Forwarded-For.
+  app.set("trust proxy", config.TRUST_PROXY);
   app.use(cors({ origin: corsOrigins }));
 
   // GraphQL is mounted before helmet: helmet's Content-Security-Policy would block the
@@ -25,18 +28,6 @@ export function createApp() {
 
   app.use(helmet()); // sensible security headers
   app.use(express.json({ limit: "100kb" }));
-
-  // TEMPORARY diagnostic (removed in the next commit): shows the caller's own forwarding headers.
-  app.get("/debug/forwarded", (req, res) => {
-    res.json({
-      xForwardedFor: req.headers["x-forwarded-for"],
-      trueClientIp: req.headers["true-client-ip"],
-      cfConnectingIp: req.headers["cf-connecting-ip"],
-      xRealIp: req.headers["x-real-ip"],
-      socketAddress: req.socket.remoteAddress,
-      expressIp: req.ip,
-    });
-  });
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });

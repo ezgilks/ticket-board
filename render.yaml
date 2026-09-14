@@ -12,6 +12,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: TRUST_PROXY # proxy hops in front of the app on Render; needed for correct rate limiting
+        value: "3"
       - key: DATABASE_URL # Supabase *session pooler* URL (port 5432), see DEPLOY.md
         sync: false
       - key: REDIS_URL # Upstash rediss:// URL
