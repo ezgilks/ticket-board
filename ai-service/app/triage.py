@@ -109,13 +109,14 @@ class AnthropicProvider:
 
 
 class GeminiProvider:
-    """Google Gemini Flash via its REST API. Free tier, no credit card — the $0 option."""
+    """Google Gemini via its generateContent REST API. Free tier, no credit card — the $0 option.
+    Default model is Flash-Lite: the fastest free model, and label classification doesn't need more."""
 
     name = "gemini"
 
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
-        self._model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self._model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     def triage(self, title: str, description: str | None) -> TriageResult:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent"
