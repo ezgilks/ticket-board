@@ -38,7 +38,7 @@ jobs:
       DATABASE_URL: postgresql://ticket:ticket@localhost:5433/ticketboard_test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -67,7 +67,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -89,7 +89,7 @@ jobs:
       run:
         working-directory: ai-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [api, web]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -t ticketboard-api ./api
       - run: docker build -t ticketboard-web ./web
 
@@ -117,7 +117,7 @@ jobs:
       run:
         working-directory: infra
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v3
       - run: terraform fmt -check
       # -backend=false: validate syntax and references without touching any AWS account.
