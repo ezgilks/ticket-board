@@ -1,6 +1,6 @@
 # CPU-only PyTorch wheels (the default Linux wheels bundle CUDA and are ~2GB larger).
 --extra-index-url https://download.pytorch.org/whl/cpu
-fastapi==0.118.*
+fastapi==0.141.*
 uvicorn[standard]==0.37.*
 pydantic==2.*
 httpx==0.28.*
