@@ -8,7 +8,8 @@ export type BoardEvent =
   | { type: "column:upserted"; column: Column }
   | { type: "column:deleted"; columnId: string }
   | { type: "board:refresh" }
-  | { type: "board:deleted" };
+  | { type: "board:deleted" }
+  | { type: "board:removed" }; // this user was removed from the board
 
 /**
  * Joins the board's room and calls onEvent for every change pushed by the server.

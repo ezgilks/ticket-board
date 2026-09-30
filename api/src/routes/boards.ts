@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { enrichInBackground } from "../ai/enrich.js";
 import { publishBoardEvent } from "../events.js";
+import { evictFromBoard } from "../realtime.js";
 import { originSocketId } from "../lib/origin.js";
 import { idParam } from "../lib/params.js";
 import { userIdOf } from "../middleware/auth.js";
@@ -56,6 +57,17 @@ boardsRouter.post("/:boardId/members", async (req, res) => {
   }
   // The only time the raw token leaves the server. The client builds the link from it.
   res.status(201).json({ invite: result.invite, token: result.token });
+});
+
+// The owner removing someone, or a member removing themselves (leaving).
+boardsRouter.delete("/:boardId/members/:userId", async (req, res) => {
+  const boardId = idParam(req, "boardId");
+  const targetId = idParam(req, "userId");
+  await boards.removeMember(userIdOf(req), boardId, targetId);
+  // Order matters: evict first, so the removed user's tabs don't receive the refresh below.
+  await evictFromBoard(boardId, targetId);
+  await publishBoardEvent(boardId, { type: "board:refresh" }, originSocketId(req));
+  res.status(204).end();
 });
 
 boardsRouter.get("/:boardId/invites", async (req, res) => {

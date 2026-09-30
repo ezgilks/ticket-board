@@ -136,6 +136,26 @@ export function getIO() {
   return io;
 }
 
+/**
+ * Pull a removed member's open tabs out of the board's room, on every API instance.
+ *
+ * Membership is checked when a socket *joins* a room, not on every event. So without this,
+ * someone removed from a board would keep receiving its live updates until they reloaded.
+ * fetchSockets() goes through the Redis adapter, so it finds their sockets wherever they're
+ * connected, and leave()/emit() on those remote sockets are relayed the same way.
+ */
+export async function evictFromBoard(boardId: string, userId: string) {
+  if (!io) return;
+  const room = roomFor(boardId);
+  const sockets = await io.in(room).fetchSockets();
+  for (const s of sockets) {
+    if (s.data.userId !== userId) continue;
+    s.emit("board:event", { type: "board:removed" });
+    s.leave(room);
+  }
+  await broadcastPresence(io, boardId);
+}
+
 // Disconnect-triggered broadcasts are fire-and-forget, so shutdown has to wait for them:
 // quitting Redis underneath one makes its publish reject with "client is closed".
 const inFlightPresence = new Set<Promise<void>>();

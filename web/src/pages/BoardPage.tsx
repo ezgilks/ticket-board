@@ -17,6 +17,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
+import { BoardSettingsDialog } from "../components/BoardSettingsDialog";
 import { ConfirmDialog } from "../components/Dialog";
 import { FilterBar } from "../components/FilterBar";
 import { Header } from "../components/Header";
@@ -56,6 +57,7 @@ export function BoardPage() {
   const [newColumn, setNewColumn] = useState("");
   const [showInsights, setShowInsights] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // One confirm dialog, reused for every destructive action on the page.
   const [confirming, setConfirming] = useState<{
     title: string;
@@ -108,11 +110,16 @@ export function BoardPage() {
           load();
           break;
         case "board:deleted":
+          toast.error("This board was deleted by its owner.");
+          navigate("/", { replace: true });
+          break;
+        case "board:removed":
+          toast.error("You were removed from this board.");
           navigate("/", { replace: true });
           break;
       }
     },
-    [load, navigate],
+    [load, navigate, toast],
   );
   useBoardSocket(boardId, onEvent, load);
   const viewers = useBoardPresence(boardId);
@@ -272,6 +279,57 @@ export function BoardPage() {
 
   // Existing account → added now. Unknown email → the server returns a one-time token,
   // and the link is built here, because only the browser knows the site's public origin.
+  async function renameBoard(name: string) {
+    await api("PATCH", `/boards/${boardId}`, { name });
+    setBoard((b) => (b ? { ...b, name } : b));
+    toast.success("Board renamed");
+  }
+
+  function removeMember(member: Member) {
+    setConfirming({
+      title: `Remove ${member.user.name}?`,
+      message: "They lose access right away, including any tab they have open. Their tickets become unassigned.",
+      confirmLabel: "Remove",
+      onConfirm: async () => {
+        await api("DELETE", `/boards/${boardId}/members/${member.userId}`);
+        await load();
+      },
+    });
+  }
+
+  function leaveBoard() {
+    if (!board || !user) return;
+    const name = board.name;
+    setConfirming({
+      title: `Leave "${name}"?`,
+      message: "You'll need a new invite from the owner to get back in.",
+      confirmLabel: "Leave",
+      onConfirm: async () => {
+        await api("DELETE", `/boards/${boardId}/members/${user.id}`);
+        toast.success(`You left "${name}"`);
+        navigate("/", { replace: true });
+      },
+    });
+  }
+
+  function deleteBoard() {
+    if (!board) return;
+    const name = board.name;
+    setConfirming({
+      title: `Delete "${name}"?`,
+      message:
+        board.members.length > 1
+          ? `Every column and ticket goes with it, for all ${board.members.length} members. This can't be undone.`
+          : "Every column and ticket goes with it. This can't be undone.",
+      confirmLabel: "Delete board",
+      onConfirm: async () => {
+        await api("DELETE", `/boards/${boardId}`);
+        toast.success(`Deleted "${name}"`);
+        navigate("/", { replace: true });
+      },
+    });
+  }
+
   async function invite(email: string): Promise<{ link?: string }> {
     const res = await api<{ member?: Member; token?: string }>("POST", `/boards/${boardId}/members`, { email });
     if (res.token) return { link: `${window.location.origin}/invite/${res.token}` };
@@ -295,6 +353,9 @@ export function BoardPage() {
           )}
           <button type="button" onClick={() => setShowInsights((v) => !v)} className="btn-ghost">
             Insights
+          </button>
+          <button type="button" onClick={() => setSettingsOpen(true)} className="btn-ghost">
+            Settings
           </button>
         </div>
       </Header>
@@ -363,6 +424,18 @@ export function BoardPage() {
         >
           <SimilarTickets ticketId={openTicket.id} aiStatus={openTicket.aiStatus} onOpen={setOpenTicketId} />
         </TicketModal>
+      )}
+
+      {settingsOpen && (
+        <BoardSettingsDialog
+          board={board}
+          currentUserId={user?.id}
+          onRename={renameBoard}
+          onRemove={removeMember}
+          onLeave={leaveBoard}
+          onDelete={deleteBoard}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
 
       {inviting && (

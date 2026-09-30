@@ -8,7 +8,8 @@ export type BoardEvent =
   | { type: "column:upserted"; column: unknown }
   | { type: "column:deleted"; columnId: string }
   | { type: "board:refresh" } // "something broad changed — refetch the board"
-  | { type: "board:deleted" };
+  | { type: "board:deleted" }
+  | { type: "board:removed" }; // sent only to the sockets of someone removed from the board
 
 /**
  * The single choke point for "a board changed". Every write calls this, so

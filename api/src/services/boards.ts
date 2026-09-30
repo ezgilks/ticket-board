@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getCachedBoard, setCachedBoard } from "../cache.js";
 import { prisma } from "../db.js";
-import { notFound } from "../lib/errors.js";
+import { badRequest, forbidden, notFound } from "../lib/errors.js";
 import { assertMember, assertOwner } from "./access.js";
 
 export const BoardInput = z.object({ name: z.string().trim().min(1).max(100) });
@@ -70,4 +70,28 @@ export async function renameBoard(userId: string, boardId: string, input: z.infe
 export async function deleteBoard(userId: string, boardId: string) {
   await assertOwner(userId, boardId);
   await prisma.board.delete({ where: { id: boardId } });
+}
+
+/**
+ * Remove someone from a board. One endpoint, two cases:
+ *   - the owner removes a member
+ *   - a member removes themselves ("leave board")
+ * The owner can't be removed or leave: a board always has an owner. They delete it instead.
+ */
+export async function removeMember(actorId: string, boardId: string, targetId: string) {
+  const actor = await assertMember(actorId, boardId);
+  const target = await prisma.boardMember.findUnique({ where: { boardId_userId: { boardId, userId: targetId } } });
+  if (!target) throw notFound("Not a member of this board");
+  if (target.role === "OWNER") throw badRequest("The owner can't leave. Delete the board instead.");
+  if (actorId !== targetId && actor.role !== "OWNER") throw forbidden("Only the board owner can remove members");
+
+  await prisma.$transaction([
+    // Tickets can only be assigned to members (see assertAssignable), so unassign theirs.
+    // That changes ticket content, so it bumps the version like any other edit.
+    prisma.ticket.updateMany({
+      where: { boardId, assigneeId: targetId },
+      data: { assigneeId: null, version: { increment: 1 } },
+    }),
+    prisma.boardMember.delete({ where: { boardId_userId: { boardId, userId: targetId } } }),
+  ]);
 }
