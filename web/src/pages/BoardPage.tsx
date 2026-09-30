@@ -14,10 +14,11 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
 import { ConfirmDialog, InviteDialog } from "../components/Dialog";
+import { FilterBar } from "../components/FilterBar";
 import { Header } from "../components/Header";
 import { InsightsPanel } from "../components/InsightsPanel";
 import { PresenceAvatars } from "../components/PresenceAvatars";
@@ -25,6 +26,7 @@ import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
 import { api } from "../lib/api";
+import { type BoardFilter, boardLabels, filterBoard, filterFromParams, filterToParams, isFiltering } from "../lib/boardFilter";
 import { errorMessage, useToast } from "../lib/toast";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
 import type { Board, Column, Ticket } from "../lib/types";
@@ -61,6 +63,10 @@ export function BoardPage() {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = filterFromParams(searchParams);
+  // replace, not push: typing a search shouldn't add one history entry per keystroke.
+  const setFilter = (f: BoardFilter) => setSearchParams(filterToParams(f), { replace: true });
 
   // Snapshot taken when a drag starts, so a failed or cancelled drag can be undone.
   const dragStart = useRef<{ board: Board; columnId: string; index: number } | null>(null);
@@ -120,6 +126,12 @@ export function BoardPage() {
   if (!board) return <p className="p-8 text-slate-500">Loading…</p>;
 
   const isOwner = board.ownerId === user?.id;
+  // Only rendering is filtered. `board` stays complete, and every drag calculation below
+  // runs against it, so a drop lands at the right place among tickets that are hidden.
+  const visible = filterBoard(board, filter);
+  const count = (b: Board) => b.columns.reduce((n, c) => n + c.tickets.length, 0);
+  const total = count(board);
+  const shown = count(visible);
   const openTicket = openTicketId ? findTicket(board, openTicketId)?.ticket : undefined;
 
   // Resolve what the pointer is over: a ticket (→ its column + index) or an empty column.
@@ -274,6 +286,16 @@ export function BoardPage() {
         </div>
       </Header>
 
+      <FilterBar
+        filter={filter}
+        onChange={setFilter}
+        labels={boardLabels(board)}
+        members={board.members}
+        currentUserId={user?.id}
+        shown={shown}
+        total={total}
+      />
+
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
@@ -283,10 +305,11 @@ export function BoardPage() {
         onDragCancel={onDragCancel}
       >
         <main className="flex flex-1 items-start gap-4 overflow-x-auto p-6">
-          {board.columns.map((column) => (
+          {visible.columns.map((column, i) => (
             <BoardColumn
               key={column.id}
               column={column}
+              total={board.columns[i]?.tickets.length}
               onOpenTicket={(t) => setOpenTicketId(t.id)}
               onCreateTicket={createTicket}
               onDeleteColumn={deleteColumn}
@@ -303,6 +326,12 @@ export function BoardPage() {
             />
           </form>
         </main>
+
+        {isFiltering(filter) && shown === 0 && total > 0 && (
+          <p className="pointer-events-none fixed inset-x-0 top-1/2 text-center text-sm text-slate-500">
+            No tickets match these filters.
+          </p>
+        )}
 
         {/* The floating copy that follows the pointer while dragging. */}
         <DragOverlay>{activeTicket && <TicketCard ticket={activeTicket} overlay />}</DragOverlay>

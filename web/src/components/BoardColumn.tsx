@@ -9,9 +9,11 @@ interface Props {
   onOpenTicket: (ticket: Ticket) => void;
   onCreateTicket: (columnId: string, title: string) => Promise<void>;
   onDeleteColumn: (column: Column) => void;
+  /** Tickets in the column before filtering. Shown as "2 / 5" when some are hidden. */
+  total?: number;
 }
 
-export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColumn }: Props) {
+export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColumn, total }: Props) {
   // The column itself is a drop target, so tickets can land in an empty column.
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: "column" } });
   const [adding, setAdding] = useState(false);
@@ -37,7 +39,9 @@ export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColu
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-700">
-          {column.name} <span className="font-normal text-slate-400">{column.tickets.length}</span>
+          {column.name} <span className="font-normal text-slate-400">
+            {total !== undefined && total !== column.tickets.length ? `${column.tickets.length} / ${total}` : column.tickets.length}
+          </span>
         </h2>
         <button
           type="button"
