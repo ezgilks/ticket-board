@@ -4,6 +4,8 @@ import { api } from "../lib/api";
 import type { BoardSummary } from "../lib/types";
 import { Header } from "../components/Header";
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 export function BoardsPage() {
   const [boards, setBoards] = useState<BoardSummary[] | null>(null);
   const [name, setName] = useState("");
@@ -55,7 +57,7 @@ export function BoardsPage() {
               >
                 <p className="font-medium">{b.name}</p>
                 <p className="text-sm text-slate-500">
-                  {b._count.tickets} tickets · {b._count.members} members
+                  {plural(b._count.tickets, "ticket")} · {plural(b._count.members, "member")}
                 </p>
               </Link>
             </li>

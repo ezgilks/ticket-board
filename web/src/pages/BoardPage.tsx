@@ -17,6 +17,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
+import { ConfirmDialog, InviteDialog } from "../components/Dialog";
 import { Header } from "../components/Header";
 import { InsightsPanel } from "../components/InsightsPanel";
 import { PresenceAvatars } from "../components/PresenceAvatars";
@@ -24,6 +25,7 @@ import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
 import { api } from "../lib/api";
+import { errorMessage, useToast } from "../lib/toast";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
 import type { Board, Column, Ticket } from "../lib/types";
 import { type BoardEvent, useBoardSocket } from "../lib/useBoardSocket";
@@ -50,6 +52,15 @@ export function BoardPage() {
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [newColumn, setNewColumn] = useState("");
   const [showInsights, setShowInsights] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  // One confirm dialog, reused for every destructive action on the page.
+  const [confirming, setConfirming] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const toast = useToast();
 
   // Snapshot taken when a drag starts, so a failed or cancelled drag can be undone.
   const dragStart = useRef<{ board: Board; columnId: string; index: number } | null>(null);
@@ -169,9 +180,10 @@ export function BoardPage() {
       });
       if (res.rebalanced) await load();
       else setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
-    } catch {
+    } catch (err) {
+      // Rolling back without saying so reads as "the board is broken". Say what happened.
       setBoard(start.board);
-      setError(null);
+      toast.error(`Couldn't move "${final.ticket.title}": ${errorMessage(err, "network error")}. It's back where it was.`);
     }
   }
 
@@ -183,8 +195,13 @@ export function BoardPage() {
   }
 
   async function createTicket(columnId: string, title: string) {
-    const res = await api<{ ticket: Ticket }>("POST", `/boards/${boardId}/tickets`, { columnId, title });
-    setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
+    try {
+      const res = await api<{ ticket: Ticket }>("POST", `/boards/${boardId}/tickets`, { columnId, title });
+      setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
+    } catch (err) {
+      toast.error(`Couldn't create the ticket: ${errorMessage(err, "network error")}`);
+      throw err; // so BoardColumn keeps the typed title for a retry
+    }
   }
 
   async function saveTicket(ticketId: string, patch: TicketPatch) {
@@ -192,35 +209,50 @@ export function BoardPage() {
     setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
   }
 
-  async function deleteTicket(ticketId: string) {
-    await api("DELETE", `/tickets/${ticketId}`);
-    setBoard((b) => (b ? removeTicket(b, ticketId) : b));
-    setOpenTicketId(null);
+  function deleteTicket(ticket: Ticket) {
+    setConfirming({
+      title: "Delete ticket?",
+      message: `"${ticket.title}" will be deleted for everyone on this board.`,
+      confirmLabel: "Delete ticket",
+      onConfirm: async () => {
+        await api("DELETE", `/tickets/${ticket.id}`);
+        setBoard((b) => (b ? removeTicket(b, ticket.id) : b));
+        setOpenTicketId(null);
+      },
+    });
   }
 
   async function addColumn(e: FormEvent) {
     e.preventDefault();
     if (!newColumn.trim()) return;
-    const res = await api<{ column: Column }>("POST", `/boards/${boardId}/columns`, { name: newColumn.trim() });
-    setBoard((b) => (b ? upsertColumn(b, res.column) : b));
-    setNewColumn("");
-  }
-
-  async function deleteColumn(column: Column) {
-    if (!window.confirm(`Delete "${column.name}" and its ${column.tickets.length} tickets?`)) return;
-    await api("DELETE", `/columns/${column.id}`);
-    setBoard((b) => (b ? removeColumn(b, column.id) : b));
-  }
-
-  async function share() {
-    const email = window.prompt("Invite a user by email");
-    if (!email) return;
     try {
-      await api("POST", `/boards/${boardId}/members`, { email });
-      await load();
+      const res = await api<{ column: Column }>("POST", `/boards/${boardId}/columns`, { name: newColumn.trim() });
+      setBoard((b) => (b ? upsertColumn(b, res.column) : b));
+      setNewColumn("");
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Invite failed");
+      toast.error(`Couldn't add the column: ${errorMessage(err, "network error")}`);
     }
+  }
+
+  function deleteColumn(column: Column) {
+    const count = column.tickets.length;
+    setConfirming({
+      title: `Delete "${column.name}"?`,
+      message: count
+        ? `Its ${count} ticket${count === 1 ? "" : "s"} will be deleted too, for everyone on this board.`
+        : "The column is empty.",
+      confirmLabel: "Delete column",
+      onConfirm: async () => {
+        await api("DELETE", `/columns/${column.id}`);
+        setBoard((b) => (b ? removeColumn(b, column.id) : b));
+      },
+    });
+  }
+
+  async function invite(email: string) {
+    await api("POST", `/boards/${boardId}/members`, { email });
+    await load();
+    toast.success(`${email} can now open this board`);
   }
 
   return (
@@ -232,7 +264,7 @@ export function BoardPage() {
           <span className="text-sm text-slate-400">{board.members.map((m) => m.user.name).join(", ")}</span>
           <PresenceAvatars users={viewers} currentUserId={user?.id} />
           {isOwner && (
-            <button type="button" onClick={share} className="btn-ghost">
+            <button type="button" onClick={() => setInviting(true)} className="btn-ghost">
               Share
             </button>
           )}
@@ -284,12 +316,17 @@ export function BoardPage() {
           ticket={openTicket}
           members={board.members}
           onSave={(patch) => saveTicket(openTicket.id, patch)}
-          onDelete={() => deleteTicket(openTicket.id)}
+          onDelete={() => deleteTicket(openTicket)}
           onClose={() => setOpenTicketId(null)}
         >
           <SimilarTickets ticketId={openTicket.id} aiStatus={openTicket.aiStatus} onOpen={setOpenTicketId} />
         </TicketModal>
       )}
+
+      {inviting && <InviteDialog onInvite={invite} onClose={() => setInviting(false)} />}
+
+      {/* Rendered after TicketModal so it stacks on top when deleting from inside the modal. */}
+      {confirming && <ConfirmDialog {...confirming} onClose={() => setConfirming(null)} />}
     </div>
   );
 }

@@ -15,7 +15,7 @@ interface Props {
   ticket: Ticket;
   members: Member[];
   onSave: (patch: TicketPatch) => Promise<void>;
-  onDelete: () => Promise<void>;
+  onDelete: () => void;
   onClose: () => void;
   children?: React.ReactNode;
 }

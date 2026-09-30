@@ -20,7 +20,11 @@ export function BoardColumn({ column, onOpenTicket, onCreateTicket, onDeleteColu
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    await onCreateTicket(column.id, title.trim());
+    try {
+      await onCreateTicket(column.id, title.trim());
+    } catch {
+      return; // the board already showed a toast; keep the title so it can be retried
+    }
     setTitle("");
     setAdding(false);
   }
