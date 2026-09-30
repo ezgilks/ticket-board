@@ -8,7 +8,7 @@ and prioritised by an LLM, and a vector search surfaces similar existing tickets
 sample board, no sign-up. The free-tier API sleeps when idle, so the first request can take up to a minute
 (the app says so while it waits).
 
-![Ticket modal showing semantically similar tickets](docs/screenshot.jpg)
+![Two users side by side: a card dragged on the left moves on the right, and a new ticket appears on both](docs/demo.gif)
 
 ## Features
 
@@ -25,6 +25,9 @@ sample board, no sign-up. The free-tier API sleeps when idle, so the first reque
   board and kept in the URL so a filtered view can be shared. Drag-and-drop still works while filtered.
 
 **AI**
+
+![Ticket modal showing semantically similar tickets](docs/screenshot.jpg)
+
 - **Triage** — on creation, an LLM (Gemini free tier or Claude Haiku 4.5, behind a `TriageProvider`
   interface) suggests labels and priority, constrained to a strict schema. Falls back to deterministic
   rules if the LLM fails. Suggestions never overwrite what a user chose.
@@ -103,10 +106,17 @@ No API keys needed: without `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`, triage uses 
 cd api && npm test            # 82 tests against real Postgres + Redis (docker compose up -d first)
 cd web && npm test            # 67 component and state tests
 cd ai-service && .venv/bin/pytest            # 17 tests; RUN_MODEL_TESTS=1 also runs the real model
+cd e2e && npm test            # 6 end-to-end browser tests (Playwright) against the real stack
 ```
 
+The end-to-end suite starts its own API and web server on separate ports with its own database,
+then drives Chromium through the flows that span pages and users: the guest demo, a drag syncing
+to a teammate's screen, conflicting edits, joining through an invite link, being removed from a
+board, and search. The README animation above is recorded by the same tooling
+(`cd e2e && npm run demo-gif`).
+
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, build, and dependency audit for every
-service, builds the Docker images, and validates the Terraform.
+service, the end-to-end suite in Chromium, builds the Docker images, and validates the Terraform.
 
 ## Deploy
 

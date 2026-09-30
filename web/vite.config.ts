@@ -12,12 +12,13 @@ export default defineConfig({
   server: {
     // In dev, the browser calls /api/* on the Vite server, which forwards to Express.
     // Same origin from the browser's view → no CORS setup needed locally.
+    // API_PROXY_TARGET lets the end-to-end suite run its own API on another port.
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: process.env["API_PROXY_TARGET"] ?? "http://localhost:3000",
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
-      "/socket.io": { target: "http://localhost:3000", ws: true },
+      "/socket.io": { target: process.env["API_PROXY_TARGET"] ?? "http://localhost:3000", ws: true },
     },
   },
 });

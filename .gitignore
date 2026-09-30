@@ -16,3 +16,8 @@ coverage/
 *.tfstate.*
 terraform.tfvars
 
+
+# Playwright output
+test-results/
+playwright-report/
+demo-frames/

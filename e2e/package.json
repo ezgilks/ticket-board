@@ -1,0 +1,18 @@
+{
+  "name": "e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end browser tests: the real web app, API, Postgres and Redis, driven by Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "typecheck": "tsc",
+    "demo-gif": "RECORD_DEMO=1 playwright test demo.record --reporter=line && python3 scripts/make_gif.py"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2"
+  }
+}

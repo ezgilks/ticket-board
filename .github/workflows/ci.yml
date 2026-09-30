@@ -61,6 +61,68 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
 
+  # A real browser against the real stack (Vite + API + Postgres + Redis). Catches what
+  # unit tests can't: two users over live sockets, redirects between pages, URL state.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ticket
+          POSTGRES_PASSWORD: ticket
+          POSTGRES_DB: ticketboard_e2e
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ticket"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      # prisma generate reads the config file, which needs *a* URL to exist.
+      DATABASE_URL: postgresql://ticket:ticket@localhost:5433/ticketboard_e2e
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            web/package-lock.json
+            e2e/package-lock.json
+
+      - run: npm ci
+        working-directory: api
+      - run: npx prisma generate
+        working-directory: api
+      - run: npm ci
+        working-directory: web
+      - run: npm ci
+        working-directory: e2e
+      - name: Typecheck tests
+        run: npm run typecheck
+        working-directory: e2e
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      - name: End-to-end tests
+        run: npm test
+        working-directory: e2e
+      # On failure, keep the HTML report and traces: a step-by-step replay of what broke.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
   web:
     runs-on: ubuntu-latest
     defaults:

@@ -68,10 +68,17 @@ export function BoardPage() {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const toast = useToast();
+  // The filter lives in React state and is *mirrored* to the URL, which is read once on load.
+  // It can't be derived from the URL directly: the router applies URL changes as a
+  // low-priority transition, and a text input fed from a transition drops keystrokes
+  // (typing "safari" quickly left "?q=i"). Found by the end-to-end suite.
   const [searchParams, setSearchParams] = useSearchParams();
-  const filter = filterFromParams(searchParams);
-  // replace, not push: typing a search shouldn't add one history entry per keystroke.
-  const setFilter = (f: BoardFilter) => setSearchParams(filterToParams(f), { replace: true });
+  const [filter, setFilterState] = useState(() => filterFromParams(searchParams));
+  const setFilter = (f: BoardFilter) => {
+    setFilterState(f);
+    // replace, not push: typing a search shouldn't add one history entry per keystroke.
+    setSearchParams(filterToParams(f), { replace: true });
+  };
 
   // Snapshot taken when a drag starts, so a failed or cancelled drag can be undone.
   const dragStart = useRef<{ board: Board; columnId: string; index: number } | null>(null);
