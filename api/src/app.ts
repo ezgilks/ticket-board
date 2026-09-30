@@ -6,6 +6,7 @@ import { yoga } from "./graphql/index.js";
 import { authRouter } from "./routes/auth.js";
 import { boardsRouter } from "./routes/boards.js";
 import { columnsRouter } from "./routes/columns.js";
+import { healthRouter } from "./routes/health.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
@@ -29,10 +30,7 @@ export function createApp() {
   app.use(helmet()); // sensible security headers
   app.use(express.json({ limit: "100kb" }));
 
-  app.get("/health", (_req, res) => {
-    res.json({ status: "ok" });
-  });
-
+  app.use("/health", healthRouter);
   app.use("/auth", authRouter);
   // Everything below requires a valid token.
   app.use("/boards", requireAuth, boardsRouter);

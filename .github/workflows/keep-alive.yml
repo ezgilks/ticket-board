@@ -1,0 +1,36 @@
+name: Keep alive
+
+# The demo runs on free tiers that go to sleep:
+#   - Render spins a web service down after 15 min idle (cold start ≈ 40 s).
+#   - Supabase pauses a project after ~7 days without database activity.
+#
+# Render's free tier is ~750 instance-hours/month for the whole workspace, and there are
+# two services, so keeping both warm 24/7 (~1,440 h) would get them suspended mid-month.
+# Instead: warm every 10 min during US daytime (11 h × 2 services × 30 days ≈ 660 h), plus
+# one readiness check a day that touches Postgres so Supabase never pauses.
+#
+# A failed check fails the run, and GitHub emails the repo owner — so this doubles as a
+# free uptime monitor. GitHub cron is best-effort: runs can start several minutes late.
+on:
+  schedule:
+    - cron: "*/10 14-23,0 * * *" # 14:00–00:59 UTC ≈ 10am–9pm US Eastern
+    - cron: "0 8 * * *" # overnight: database only
+  workflow_dispatch:
+
+env:
+  API_URL: https://ticketboard-api.onrender.com
+  AI_URL: https://ticketboard-ai.onrender.com
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # /health/ready runs SELECT 1 and a Redis PING, so it keeps Supabase active and fails
+      # (HTTP 503) if either dependency is down. Retries cover a cold start.
+      - name: API readiness (Postgres + Redis)
+        run: curl --fail-with-body --silent --show-error --max-time 90 --retry 3 --retry-all-errors "$API_URL/health/ready"
+
+      - name: Warm the AI service
+        if: github.event.schedule != '0 8 * * *'
+        run: curl --fail-with-body --silent --show-error --max-time 90 --retry 3 --retry-all-errors "$AI_URL/health"
