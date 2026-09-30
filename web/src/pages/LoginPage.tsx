@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { describeError } from "../lib/api";
 
 export function LoginPage() {
   const { user, login, register } = useAuth();
@@ -25,7 +26,7 @@ export function LoginPage() {
       else await register(name, email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(describeError(err));
     } finally {
       setSubmitting(false);
     }

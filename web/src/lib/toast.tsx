@@ -72,6 +72,3 @@ export function useToast(): ToastApi {
   if (!ctx) throw new Error("useToast must be used inside <ToastProvider>");
   return ctx;
 }
-
-/** Turns anything thrown into something fit to show a user. */
-export const errorMessage = (err: unknown, fallback: string) => (err instanceof Error && err.message) || fallback;

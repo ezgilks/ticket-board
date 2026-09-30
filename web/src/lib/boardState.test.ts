@@ -39,6 +39,17 @@ describe("upsertTicket (events from the server)", () => {
     expect(ids(next, "done")).toEqual(["a", "d"]);
   });
 
+  it("ignores an event older than what the board already has", () => {
+    const newer = upsertTicket(board(), ticket({ id: "a", columnId: "todo", title: "v3", version: 3 }));
+    const next = upsertTicket(newer, ticket({ id: "a", columnId: "todo", title: "v2", version: 2 }));
+    expect(next).toBe(newer);
+  });
+
+  it("applies a move, which carries the same version", () => {
+    const next = upsertTicket(board(), ticket({ id: "a", columnId: "done", position: 0.5, version: 1 }));
+    expect(ids(next, "done")).toEqual(["a", "d"]);
+  });
+
   it("replaces fields on an existing ticket", () => {
     const next = upsertTicket(board(), ticket({ id: "b", columnId: "todo", position: 2, priority: "URGENT" }));
     expect(next.columns[0]?.tickets[1]?.priority).toBe("URGENT");

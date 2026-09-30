@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useState } from "react";
-import { errorMessage } from "../lib/toast";
+import { describeError } from "../lib/api";
 
 // In-app replacements for window.confirm / window.prompt. The browser versions can't be
 // styled, block the whole tab, and some browsers let users suppress them entirely — at
@@ -47,7 +47,7 @@ export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onClose
       await onConfirm();
       onClose();
     } catch (err) {
-      setError(errorMessage(err, "Something went wrong"));
+      setError(describeError(err));
       setBusy(false);
     }
   }
@@ -98,7 +98,7 @@ export function InviteDialog({ onInvite, onClose }: InviteProps) {
       await onInvite(email.trim());
       onClose();
     } catch (err) {
-      setError(errorMessage(err, "Invite failed"));
+      setError(describeError(err));
       setBusy(false);
     }
   }

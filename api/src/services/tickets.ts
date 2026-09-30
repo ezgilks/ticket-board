@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { aiEnabled } from "../ai/client.js";
 import { prisma } from "../db.js";
-import { badRequest } from "../lib/errors.js";
+import { badRequest, conflict, notFound } from "../lib/errors.js";
 import { assertMember, assertTicketAccess } from "./access.js";
 
 const Priority = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
@@ -22,6 +22,9 @@ export const UpdateTicketInput = z.object({
   priority: Priority.optional(),
   labels: Labels.optional(),
   assigneeId: z.uuid().nullable().optional(),
+  // The version the client started editing from. Optional so other callers keep
+  // last-write-wins; the web app always sends it.
+  version: z.number().int().min(1).optional(),
 });
 
 // Where to drop a ticket: a column, and its index among that column's other tickets.
@@ -83,7 +86,25 @@ export async function updateTicket(userId: string, ticketId: string, input: z.in
   for (const key of ["title", "description", "priority", "labels", "assigneeId"] as const) {
     if (input[key] !== undefined) data[key] = input[key];
   }
-  return prisma.ticket.update({ where: { id: ticketId }, data, include: withAssignee });
+
+  // Optimistic concurrency, as one atomic compare-and-swap:
+  //   UPDATE "Ticket" SET ..., version = version + 1 WHERE id = $1 AND version = $2
+  // No lock is held while the user edits. If someone else saved in between, the WHERE
+  // matches nothing and we report a conflict instead of silently overwriting their work.
+  // Two saves racing on the same version can't both win: Postgres serialises the row
+  // update, and the second one's WHERE no longer matches.
+  const { count } = await prisma.ticket.updateMany({
+    where: { id: ticketId, ...(input.version !== undefined && { version: input.version }) },
+    data: { ...data, version: { increment: 1 } },
+  });
+
+  const current = await prisma.ticket.findUnique({ where: { id: ticketId }, include: withAssignee });
+  if (!current) throw notFound("Ticket not found"); // deleted while being edited
+  if (count === 0) {
+    // Send back what's there now, so the client can show it without another round-trip.
+    throw conflict("This ticket was changed by someone else while you were editing", { ticket: current });
+  }
+  return current;
 }
 
 export async function deleteTicket(userId: string, ticketId: string) {

@@ -96,7 +96,9 @@ async function applyTriage(
   // updateMany with the id filter: a no-op instead of an error if the ticket was just deleted.
   const { count } = await prisma.ticket.updateMany({
     where: { id: ticketId },
-    data: { ...data, aiTriage: { ...suggestion, applied } },
+    // Applying labels or priority is a content edit like any other, so it bumps the version:
+    // a user editing the ticket meanwhile gets a conflict instead of erasing the AI's values.
+    data: { ...data, aiTriage: { ...suggestion, applied }, ...(applied.length > 0 && { version: { increment: 1 } }) },
   });
   return count > 0;
 }

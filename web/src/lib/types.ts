@@ -31,6 +31,8 @@ export interface Ticket {
   assignee: User | null;
   aiTriage: AiTriage | null;
   aiStatus: AiStatus | null;
+  /** Bumped on every content edit; see the 409 handling in BoardPage.saveTicket. */
+  version: number;
   createdAt: string;
   updatedAt: string;
 }

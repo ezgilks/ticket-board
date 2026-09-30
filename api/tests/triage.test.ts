@@ -47,6 +47,8 @@ describe("AI triage", () => {
     expect(updated.priority).toBe("URGENT");
     expect(updated.labels).toEqual(["bug", "auth"]);
     expect(updated.aiTriage).toMatchObject({ provider: "fake", applied: ["priority", "labels"] });
+    // Applying values is an edit: someone who opened the ticket before triage must not overwrite it.
+    expect(updated.version).toBe(2);
   });
 
   it("never overrides a priority the user chose, but still records the suggestion", async () => {

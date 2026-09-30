@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../lib/api";
 import { ToastProvider, useToast } from "../lib/toast";
 import { ConfirmDialog, InviteDialog } from "./Dialog";
 
@@ -22,7 +23,7 @@ describe("ConfirmDialog", () => {
 
   it("stays open and shows the error when the action fails", async () => {
     const onClose = vi.fn();
-    const onConfirm = vi.fn().mockRejectedValue(new Error("Column not found"));
+    const onConfirm = vi.fn().mockRejectedValue(new ApiError(404, "Column not found"));
     render(<ConfirmDialog title="Delete?" message="Gone" confirmLabel="Delete" onConfirm={onConfirm} onClose={onClose} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -44,7 +45,7 @@ describe("ConfirmDialog", () => {
 
 describe("InviteDialog", () => {
   it("keeps the typed email and shows the server's error inline", async () => {
-    const onInvite = vi.fn().mockRejectedValue(new Error("No user with that email"));
+    const onInvite = vi.fn().mockRejectedValue(new ApiError(400, "No user with that email"));
     render(<InviteDialog onInvite={onInvite} onClose={vi.fn()} />);
 
     await userEvent.type(screen.getByLabelText("Email"), "bob@test.com");

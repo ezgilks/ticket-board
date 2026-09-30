@@ -7,7 +7,7 @@ import { Prisma } from "../generated/prisma/client.js";
 // thrown errors and rejected promises from async handlers here automatically.
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ error: err.message });
+    res.status(err.status).json({ error: err.message, ...err.details });
     return;
   }
   if (err instanceof ZodError) {

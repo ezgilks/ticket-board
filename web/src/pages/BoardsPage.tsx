@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api } from "../lib/api";
+import { api, describeError } from "../lib/api";
 import type { BoardSummary } from "../lib/types";
 import { Header } from "../components/Header";
 
@@ -14,7 +14,7 @@ export function BoardsPage() {
   useEffect(() => {
     api<{ boards: BoardSummary[] }>("GET", "/boards")
       .then((res) => setBoards(res.boards))
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(`Couldn't load your boards. ${describeError(err)}`));
   }, []);
 
   async function onCreate(e: FormEvent) {

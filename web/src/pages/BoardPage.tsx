@@ -25,9 +25,9 @@ import { PresenceAvatars } from "../components/PresenceAvatars";
 import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
-import { api } from "../lib/api";
+import { ApiError, api, describeError } from "../lib/api";
 import { type BoardFilter, boardLabels, filterBoard, filterFromParams, filterToParams, isFiltering } from "../lib/boardFilter";
-import { errorMessage, useToast } from "../lib/toast";
+import { useToast } from "../lib/toast";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
 import type { Board, Column, Ticket } from "../lib/types";
 import { type BoardEvent, useBoardSocket } from "../lib/useBoardSocket";
@@ -77,7 +77,7 @@ export function BoardPage() {
       const res = await api<{ board: Board }>("GET", `/boards/${boardId}`);
       setBoard(res.board);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load board");
+      setError(`Couldn't load this board. ${describeError(err)}`);
     }
   }, [boardId]);
 
@@ -195,7 +195,7 @@ export function BoardPage() {
     } catch (err) {
       // Rolling back without saying so reads as "the board is broken". Say what happened.
       setBoard(start.board);
-      toast.error(`Couldn't move "${final.ticket.title}": ${errorMessage(err, "network error")}. It's back where it was.`);
+      toast.error(`Couldn't move "${final.ticket.title}", so it's back where it was. ${describeError(err)}`);
     }
   }
 
@@ -211,14 +211,22 @@ export function BoardPage() {
       const res = await api<{ ticket: Ticket }>("POST", `/boards/${boardId}/tickets`, { columnId, title });
       setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
     } catch (err) {
-      toast.error(`Couldn't create the ticket: ${errorMessage(err, "network error")}`);
+      toast.error(`Couldn't create the ticket. ${describeError(err)}`);
       throw err; // so BoardColumn keeps the typed title for a retry
     }
   }
 
   async function saveTicket(ticketId: string, patch: TicketPatch) {
-    const res = await api<{ ticket: Ticket }>("PATCH", `/tickets/${ticketId}`, patch);
-    setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
+    try {
+      const res = await api<{ ticket: Ticket }>("PATCH", `/tickets/${ticketId}`, patch);
+      setBoard((b) => (b ? upsertTicket(b, res.ticket) : b));
+    } catch (err) {
+      // Someone else saved first. The 409 carries what's there now; show it, so the open
+      // modal can offer to load it or overwrite it.
+      const current = err instanceof ApiError && err.status === 409 ? (err.body.ticket as Ticket | undefined) : undefined;
+      if (current) setBoard((b) => (b ? upsertTicket(b, current) : b));
+      throw err;
+    }
   }
 
   function deleteTicket(ticket: Ticket) {
@@ -242,7 +250,7 @@ export function BoardPage() {
       setBoard((b) => (b ? upsertColumn(b, res.column) : b));
       setNewColumn("");
     } catch (err) {
-      toast.error(`Couldn't add the column: ${errorMessage(err, "network error")}`);
+      toast.error(`Couldn't add the column. ${describeError(err)}`);
     }
   }
 

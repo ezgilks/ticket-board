@@ -33,6 +33,10 @@ export function moveTicketLocal(board: Board, ticketId: string, toColumnId: stri
 
 /** Insert or replace a ticket that came from the server, keeping columns sorted by position. */
 export function upsertTicket(board: Board, ticket: Ticket): Board {
+  // Socket events can arrive out of order (the AI finishing vs. a user's save, or two
+  // saves in quick succession). Never let an older copy replace a newer one.
+  const existing = findTicket(board, ticket.id)?.ticket;
+  if (existing && ticket.version < existing.version) return board;
   return {
     ...board,
     columns: board.columns.map((col) => {

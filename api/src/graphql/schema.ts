@@ -38,6 +38,7 @@ export const typeDefs = /* GraphQL */ `
     updatedAt: String!
     assignee: User
     aiTriage: AiTriage
+    version: Int!
   }
 
   type Column {

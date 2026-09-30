@@ -97,6 +97,10 @@ model Ticket {
   // Kept separately from labels/priority so the UI can show where a value came from.
   aiTriage Json?
 
+  // Bumped on every content edit (not on moves). A save states the version it started
+  // from; if that's no longer current, someone else saved first → 409. See updateTicket.
+  version Int @default(1)
+
   // Whether enrichment is still running. Null means AI never applied to this ticket
   // (the service is switched off). Stored rather than tracked client-side because the
   // wait is mostly a cold start on a free host: the tab that created the ticket may be

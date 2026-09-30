@@ -4,6 +4,8 @@ export class HttpError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Extra JSON fields for the response body, e.g. the current record on a 409. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -13,4 +15,4 @@ export const badRequest = (msg = "Bad request") => new HttpError(400, msg);
 export const unauthorized = (msg = "Unauthorized") => new HttpError(401, msg);
 export const forbidden = (msg = "Forbidden") => new HttpError(403, msg);
 export const notFound = (msg = "Not found") => new HttpError(404, msg);
-export const conflict = (msg = "Conflict") => new HttpError(409, msg);
+export const conflict = (msg = "Conflict", details?: Record<string, unknown>) => new HttpError(409, msg, details);
