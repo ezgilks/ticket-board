@@ -11,6 +11,7 @@ export function ticket(overrides: Partial<Ticket> & { id: string; columnId: stri
     assigneeId: null,
     assignee: null,
     aiTriage: null,
+    aiStatus: null,
     createdAt: "2026-09-13T00:00:00Z",
     updatedAt: "2026-09-13T00:00:00Z",
     ...overrides,

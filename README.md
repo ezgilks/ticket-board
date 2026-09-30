@@ -11,7 +11,8 @@ and prioritised by an LLM, and a vector search surfaces similar existing tickets
 ## Features
 
 - **Real-time collaboration** — Socket.io rooms per board; optimistic drag-and-drop with rollback;
-  a Redis pub/sub adapter so events reach users connected to *different* API instances.
+  live presence avatars showing who else has the board open; a Redis pub/sub adapter so events and
+  presence both reach users connected to *different* API instances.
 - **AI triage** — on creation, an LLM (Gemini free tier or Claude Haiku 4.5, behind a
   `TriageProvider` interface) suggests labels and priority, constrained to a strict schema.
   Falls back to deterministic rules if the LLM fails. Suggestions never overwrite what a user chose.
@@ -21,6 +22,9 @@ and prioritised by an LLM, and a vector search surfaces similar existing tickets
 - **GraphQL** read API alongside REST, with DataLoader batching to avoid N+1 queries.
 - **Auth** — JWT + bcrypt, board membership checks on every REST route, socket room, and GraphQL query;
   login rate limiting.
+- **Populated from the first login** — registering seeds a demo board, so drag-and-drop, triage and
+  similarity all have something to act on straight away. Enrichment is batched into one embedding
+  call and reports progress per ticket while it runs.
 
 ## Architecture
 
@@ -71,8 +75,8 @@ No API keys needed: without `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`, triage uses 
 ## Tests
 
 ```bash
-cd api && npm test            # 36 tests against real Postgres + Redis (docker compose up -d first)
-cd web && npm test            # 19 component and state tests
+cd api && npm test            # 51 tests against real Postgres + Redis (docker compose up -d first)
+cd web && npm test            # 26 component and state tests
 cd ai-service && .venv/bin/pytest            # 17 tests; RUN_MODEL_TESTS=1 also runs the real model
 ```
 

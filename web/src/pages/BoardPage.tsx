@@ -19,6 +19,7 @@ import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
 import { Header } from "../components/Header";
 import { InsightsPanel } from "../components/InsightsPanel";
+import { PresenceAvatars } from "../components/PresenceAvatars";
 import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
@@ -26,6 +27,7 @@ import { api } from "../lib/api";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
 import type { Board, Column, Ticket } from "../lib/types";
 import { type BoardEvent, useBoardSocket } from "../lib/useBoardSocket";
+import { useBoardPresence } from "../lib/usePresence";
 
 // Collision = "what is the dragged card over right now?". Use the pointer's actual
 // position, preferring a ticket over the column containing it. Rectangle-based checks
@@ -95,6 +97,7 @@ export function BoardPage() {
     [load, navigate],
   );
   useBoardSocket(boardId, onEvent, load);
+  const viewers = useBoardPresence(boardId);
 
   // PointerSensor needs 5px of movement before a drag starts, so plain clicks still open the modal.
   const sensors = useSensors(
@@ -225,7 +228,9 @@ export function BoardPage() {
       <Header>
         <div className="flex items-center gap-3">
           <h1 className="font-semibold">{board.name}</h1>
+          {/* Members = who can open this board. Presence = who has it open right now. */}
           <span className="text-sm text-slate-400">{board.members.map((m) => m.user.name).join(", ")}</span>
+          <PresenceAvatars users={viewers} currentUserId={user?.id} />
           {isOwner && (
             <button type="button" onClick={share} className="btn-ghost">
               Share
@@ -282,7 +287,7 @@ export function BoardPage() {
           onDelete={() => deleteTicket(openTicket.id)}
           onClose={() => setOpenTicketId(null)}
         >
-          <SimilarTickets ticketId={openTicket.id} onOpen={setOpenTicketId} />
+          <SimilarTickets ticketId={openTicket.id} aiStatus={openTicket.aiStatus} onOpen={setOpenTicketId} />
         </TicketModal>
       )}
     </div>

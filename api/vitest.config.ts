@@ -20,6 +20,8 @@ export default defineConfig({
       REDIS_URL: process.env["TEST_REDIS_URL"] ?? "redis://localhost:6379/1",
       // Blank = disabled. The AI service is faked where tests need it.
       AI_SERVICE_URL: "",
+      // Tests assert on exact board lists; seedDemoBoard has its own test.
+      SEED_DEMO_BOARD: "off",
     },
   },
 });

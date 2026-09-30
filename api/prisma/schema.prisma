@@ -97,6 +97,12 @@ model Ticket {
   // Kept separately from labels/priority so the UI can show where a value came from.
   aiTriage Json?
 
+  // Whether enrichment is still running. Null means AI never applied to this ticket
+  // (the service is switched off). Stored rather than tracked client-side because the
+  // wait is mostly a cold start on a free host: the tab that created the ticket may be
+  // reloaded, and every *other* viewer needs the same "working on it" signal.
+  aiStatus AiStatus?
+
   @@index([columnId, position])
   @@index([boardId])
 }
@@ -106,4 +112,10 @@ enum Priority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum AiStatus {
+  PENDING
+  DONE
+  FAILED
 }

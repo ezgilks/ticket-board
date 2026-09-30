@@ -1,8 +1,11 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { enrichSeededBoardInBackground } from "../ai/enrich.js";
+import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { conflict, unauthorized } from "../lib/errors.js";
 import { signToken } from "../lib/jwt.js";
+import { seedDemoBoard } from "./demoBoard.js";
 
 export const RegisterInput = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
@@ -31,6 +34,19 @@ export async function register(input: z.infer<typeof RegisterInput>) {
     data: { email: input.email, name: input.name, passwordHash },
     select: publicUser,
   });
+
+  // Seeded inline, not in the background: the client navigates straight to the board
+  // list after registering, so the board has to exist by the time this responds.
+  // A seed failure must never cost someone their account, hence the catch.
+  if (config.SEED_DEMO_BOARD === "on") {
+    try {
+      const board = await seedDemoBoard(user.id);
+      enrichSeededBoardInBackground(board.id); // embeddings + triage, after the response
+    } catch (err) {
+      console.error("[seed] demo board failed for", user.id, err instanceof Error ? err.message : err);
+    }
+  }
+
   return { user, token: signToken(user.id) };
 }
 

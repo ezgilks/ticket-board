@@ -21,6 +21,9 @@ const EnvSchema = z.object({
   AI_SERVICE_URL: z.string().optional(),
   // Shared secret sent to ai-service, which has a public URL in production.
   AI_SERVICE_TOKEN: z.string().optional(),
+  // Give every new account a pre-filled demo board. Off in tests, which assert on
+  // exact board lists; the seed itself is covered by its own test.
+  SEED_DEMO_BOARD: z.enum(["on", "off"]).default("on"),
 });
 
 export const config = EnvSchema.parse(process.env);

@@ -20,6 +20,7 @@ export function wordVector(text: string): number[] {
 export async function startFakeAi(
   triage: (body: { title: string }) => unknown = () => ({ labels: [], priority: "MEDIUM", provider: "fake" }),
 ) {
+  const calls = { embed: 0, triage: 0 };
   const server: Server = createServer((req, res) => {
     let raw = "";
     req.on("data", (c) => {
@@ -28,8 +29,11 @@ export async function startFakeAi(
     req.on("end", () => {
       const body = JSON.parse(raw || "{}");
       res.setHeader("Content-Type", "application/json");
-      if (req.url === "/embed") res.end(JSON.stringify({ vectors: body.texts.map(wordVector) }));
-      else if (req.url === "/triage") {
+      if (req.url === "/embed") {
+        calls.embed += 1;
+        res.end(JSON.stringify({ vectors: body.texts.map(wordVector) }));
+      } else if (req.url === "/triage") {
+        calls.triage += 1;
         try {
           res.end(JSON.stringify(triage(body)));
         } catch {
@@ -41,5 +45,5 @@ export async function startFakeAi(
   });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const url = `http://localhost:${(server.address() as AddressInfo).port}`;
-  return { url, close: () => new Promise((r) => server.close(r)) };
+  return { url, calls, close: () => new Promise((r) => server.close(r)) };
 }

@@ -97,6 +97,19 @@ export function TicketModal({ ticket, members, onSave, onDelete, onClose, childr
           <input className="input" value={labels} onChange={(e) => setLabels(e.target.value)} />
         </label>
 
+        {ticket.aiStatus === "PENDING" && (
+          <p className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+            AI is triaging this ticket. The service sleeps when idle, so the first one can take up to a minute.
+          </p>
+        )}
+
+        {ticket.aiStatus === "FAILED" && !ticket.aiTriage && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            AI triage didn't complete for this ticket. Its labels and priority are yours to set.
+          </p>
+        )}
+
         {ticket.aiTriage && (
           <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700">
             ✦ AI suggested <strong>{ticket.aiTriage.priority.toLowerCase()}</strong> priority

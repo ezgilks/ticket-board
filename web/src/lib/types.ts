@@ -8,6 +8,9 @@ export interface User {
   name: string;
 }
 
+/** PENDING while background enrichment runs; null when the AI service is switched off. */
+export type AiStatus = "PENDING" | "DONE" | "FAILED";
+
 export interface AiTriage {
   labels: string[];
   priority: Priority;
@@ -27,6 +30,7 @@ export interface Ticket {
   assigneeId: string | null;
   assignee: User | null;
   aiTriage: AiTriage | null;
+  aiStatus: AiStatus | null;
   createdAt: string;
   updatedAt: string;
 }

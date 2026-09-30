@@ -37,10 +37,21 @@ export function TicketCard({ ticket, onOpen, overlay = false }: Props) {
       <p className="text-sm font-medium">{ticket.title}</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={ticket.priority} />
-        {ticket.aiTriage && ticket.aiTriage.applied.length > 0 && (
-          <span title={`Triaged by AI (${ticket.aiTriage.provider})`} className="text-xs text-violet-500">
-            ✦ AI
+        {/* Enrichment runs in the background and the AI service sleeps when idle, so the
+            wait can be tens of seconds. Say so, rather than showing a bare card that
+            looks like triage silently decided nothing. */}
+        {ticket.aiStatus === "PENDING" ? (
+          <span title="AI triage in progress" className="flex items-center gap-1 text-xs text-slate-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+            triaging…
           </span>
+        ) : (
+          ticket.aiTriage &&
+          ticket.aiTriage.applied.length > 0 && (
+            <span title={`Triaged by AI (${ticket.aiTriage.provider})`} className="text-xs text-violet-500">
+              ✦ AI
+            </span>
+          )
         )}
         {ticket.labels.map((l) => (
           <span key={l} className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">

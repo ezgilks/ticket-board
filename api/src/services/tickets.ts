@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiEnabled } from "../ai/client.js";
 import { prisma } from "../db.js";
 import { badRequest } from "../lib/errors.js";
 import { assertMember, assertTicketAccess } from "./access.js";
@@ -65,6 +66,9 @@ export async function createTicket(userId: string, boardId: string, input: z.inf
       labels: input.labels ?? [],
       assigneeId: input.assigneeId ?? null,
       position: (last?.position ?? 0) + 1,
+      // The route kicks off enrichment straight after responding. Null when the AI
+      // service isn't configured, so the UI shows nothing rather than a stuck spinner.
+      aiStatus: aiEnabled() ? "PENDING" : null,
     },
     include: withAssignee,
   });
