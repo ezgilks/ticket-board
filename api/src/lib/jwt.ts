@@ -5,10 +5,11 @@ import { unauthorized } from "./errors.js";
 // A JWT is a signed JSON payload. The server signs { sub: userId } with a secret;
 // later, verifying the signature proves the server issued it and nobody edited it.
 // Nothing is stored server-side — that's what makes it "stateless" auth.
-export function signToken(userId: string): string {
+// expiresIn defaults to JWT_EXPIRES_IN; guest tokens pass a shorter one to match the account's life.
+export function signToken(userId: string, expiresIn: string = config.JWT_EXPIRES_IN): string {
   return jwt.sign({}, config.JWT_SECRET, {
     subject: userId,
-    expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"] & string,
+    expiresIn: expiresIn as jwt.SignOptions["expiresIn"] & string,
     algorithm: "HS256",
   });
 }

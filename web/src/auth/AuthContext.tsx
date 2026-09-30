@@ -8,6 +8,8 @@ interface AuthState {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  /** Creates a temporary demo account and signs in. Resolves with its demo board's id. */
+  tryAsGuest: () => Promise<string>;
   logout: () => void;
 }
 
@@ -44,13 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   }, []);
 
+  const tryAsGuest = useCallback(async () => {
+    const res = await api<{ user: User; token: string; boardId: string }>("POST", "/auth/guest");
+    tokenStore.set(res.token);
+    setUser(res.user);
+    return res.boardId;
+  }, []);
+
   const logout = useCallback(() => {
     tokenStore.clear();
     disconnectSocket();
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading, login, register, logout]);
+  const value = useMemo(
+    () => ({ user, loading, login, register, tryAsGuest, logout }),
+    [user, loading, login, register, tryAsGuest, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

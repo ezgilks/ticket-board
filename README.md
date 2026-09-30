@@ -4,27 +4,52 @@ A real-time collaborative kanban board with an AI triage layer — a small Linea
 Drag a ticket and every teammate's screen updates instantly. New tickets are auto-labelled
 and prioritised by an LLM, and a vector search surfaces similar existing tickets.
 
-**Live demo:** https://ticket-board-xi.vercel.app — the free-tier API sleeps when idle, so the first request can take ~1 minute.
+**Live demo:** https://ticket-board-xi.vercel.app — click **Try the demo** for a temporary account with a
+sample board, no sign-up. The free-tier API sleeps when idle, so the first request can take up to a minute
+(the app says so while it waits).
 
 ![Ticket modal showing semantically similar tickets](docs/screenshot.jpg)
 
 ## Features
 
-- **Real-time collaboration** — Socket.io rooms per board; optimistic drag-and-drop with rollback;
-  live presence avatars showing who else has the board open; a Redis pub/sub adapter so events and
-  presence both reach users connected to *different* API instances.
-- **AI triage** — on creation, an LLM (Gemini free tier or Claude Haiku 4.5, behind a
-  `TriageProvider` interface) suggests labels and priority, constrained to a strict schema.
-  Falls back to deterministic rules if the LLM fails. Suggestions never overwrite what a user chose.
-- **Semantic similar-ticket search** — `all-MiniLM-L6-v2` embeddings computed locally in a Python
-  service, stored in Postgres with **pgvector**, queried with a hand-written cosine-distance query on an HNSW index.
+**Collaboration**
+- **Real-time sync** — Socket.io rooms per board; optimistic drag-and-drop with rollback; live presence
+  avatars. A Redis pub/sub adapter delivers events and presence to users on *different* API instances.
+- **Conflict detection** — tickets carry a version, and saves are a compare-and-swap
+  (`UPDATE … WHERE version = ?`). A stale save gets a 409 with the current ticket, and the editor
+  offers "load their changes" or "overwrite with mine". Out-of-order socket events are dropped.
+- **Sharing** — people with an account are added directly; anyone else gets a one-time invite link
+  (hashed at rest, 7-day expiry, single use). Owners can rename, delete, and remove members; members
+  can leave. Removal also evicts the person's open sockets from the board's room on every instance.
+- **Search and filters** — text, priority, label and assignee, computed client-side over the live
+  board and kept in the URL so a filtered view can be shared. Drag-and-drop still works while filtered.
+
+**AI**
+- **Triage** — on creation, an LLM (Gemini free tier or Claude Haiku 4.5, behind a `TriageProvider`
+  interface) suggests labels and priority, constrained to a strict schema. Falls back to deterministic
+  rules if the LLM fails. Suggestions never overwrite what a user chose.
+- **Similar-ticket search** — `all-MiniLM-L6-v2` embeddings computed locally in a Python service, stored
+  in Postgres with **pgvector**, queried with a hand-written cosine-distance query on an HNSW index.
+
+**Data and APIs**
 - **Board insights** — analytics in raw SQL (`LEFT JOIN`, `unnest`, `generate_series`, `FILTER`).
 - **GraphQL** read API alongside REST, with DataLoader batching to avoid N+1 queries.
-- **Auth** — JWT + bcrypt, board membership checks on every REST route, socket room, and GraphQL query;
-  login rate limiting.
-- **Populated from the first login** — registering seeds a demo board, so drag-and-drop, triage and
-  similarity all have something to act on straight away. Enrichment is batched into one embedding
-  call and reports progress per ticket while it runs.
+
+**Security**
+- JWT + bcrypt; board membership checked on every REST route, socket room and GraphQL query.
+- Rate limiting on password and guest-account endpoints, keyed on the real client IP behind proxies.
+- Postgres row-level security on every table, with a test that fails if a new table lacks it.
+
+**Built to be clicked by strangers**
+- **Try it without signing up** — one click creates a guest account with a seeded demo board.
+  Guests have no password, their token lasts 24 hours, and expired guests are deleted with their boards.
+- **Cold starts explained** — every request goes through one client, which shows a "waking up the
+  server" banner when anything takes over 3 seconds; skeletons replace blank loading states.
+- **Readable failures** — confirm dialogs and toasts instead of browser pop-ups, and errors in plain
+  language ("The server isn't responding") rather than status codes.
+- **Phones** — the layout fits a 375px screen, and touch drags use press-and-hold so swiping scrolls.
+- **Uptime** — `/health` (liveness) and `/health/ready` (checks Postgres and Redis); a scheduled
+  GitHub Action keeps the free tiers awake and fails loudly if a dependency is down.
 
 ## Architecture
 
@@ -75,8 +100,8 @@ No API keys needed: without `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`, triage uses 
 ## Tests
 
 ```bash
-cd api && npm test            # 51 tests against real Postgres + Redis (docker compose up -d first)
-cd web && npm test            # 26 component and state tests
+cd api && npm test            # 82 tests against real Postgres + Redis (docker compose up -d first)
+cd web && npm test            # 67 component and state tests
 cd ai-service && .venv/bin/pytest            # 17 tests; RUN_MODEL_TESTS=1 also runs the real model
 ```
 

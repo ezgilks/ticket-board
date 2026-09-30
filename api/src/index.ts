@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { closeRealtime, initRealtime } from "./realtime.js";
 import { connectRedis, disconnectRedis } from "./redis.js";
+import { scheduleGuestCleanup } from "./services/guests.js";
 
 // Express handles HTTP requests; Socket.io upgrades some connections to WebSockets.
 // Both share one Node http server, and therefore one port.
@@ -13,6 +14,7 @@ async function main() {
 
   const server = createServer(createApp());
   const io = await initRealtime(server);
+  scheduleGuestCleanup();
 
   server.listen(config.PORT, () => {
     console.log(`API listening on http://localhost:${config.PORT}`);

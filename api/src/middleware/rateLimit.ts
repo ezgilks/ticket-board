@@ -12,3 +12,14 @@ export const authRateLimit = rateLimit({
   skip: () => config.NODE_ENV === "test" && process.env["RATE_LIMIT_IN_TESTS"] !== "1",
   message: { error: "Too many attempts, try again later" },
 });
+
+// Each guest seeds a board and triggers AI calls against a free-tier quota, so creating them
+// is limited separately and more tightly than password attempts.
+export const guestRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => config.NODE_ENV === "test" && process.env["RATE_LIMIT_IN_TESTS"] !== "1",
+  message: { error: "Too many demo accounts from this network. Try again later or register." },
+});

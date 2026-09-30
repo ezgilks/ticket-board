@@ -18,11 +18,15 @@ model User {
   passwordHash String
   name         String
   createdAt    DateTime @default(now())
+  // A temporary demo account: no usable password, deleted after 24h. See services/guests.ts.
+  isGuest      Boolean  @default(false)
 
   boards      Board[]
   tickets     Ticket[]
   memberships BoardMember[]
   invitesSent BoardInvite[]
+
+  @@index([isGuest, createdAt])
 }
 
 model Board {

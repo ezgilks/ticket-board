@@ -23,7 +23,7 @@ export const LoginInput = z.object({
 const BCRYPT_ROUNDS = 12;
 
 // Pick only safe fields. passwordHash must never leave the server.
-const publicUser = { id: true, email: true, name: true, createdAt: true } as const;
+const publicUser = { id: true, email: true, name: true, createdAt: true, isGuest: true } as const;
 
 export async function register(input: z.infer<typeof RegisterInput>) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
@@ -54,7 +54,8 @@ export async function login(input: z.infer<typeof LoginInput>) {
   const user = await prisma.user.findUnique({ where: { email: input.email } });
   // Same error for "no such user" and "wrong password", so attackers can't
   // use the login form to discover which emails are registered.
-  const ok = user && (await bcrypt.compare(input.password, user.passwordHash));
+  // Guests have no password, so they can never sign in with one (same generic error).
+  const ok = user && !user.isGuest && (await bcrypt.compare(input.password, user.passwordHash));
   if (!user || !ok) throw unauthorized("Invalid email or password");
 
   const { passwordHash: _omit, ...safe } = user;

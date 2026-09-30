@@ -6,6 +6,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  /** A temporary "try it" account, deleted after 24 hours. Only set on the signed-in user. */
+  isGuest?: boolean;
 }
 
 /** PENDING while background enrichment runs; null when the AI service is switched off. */

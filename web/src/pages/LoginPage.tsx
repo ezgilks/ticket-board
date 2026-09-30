@@ -1,14 +1,19 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { describeError } from "../lib/api";
 
 export function LoginPage() {
-  const { user, login, register } = useAuth();
+  const { user, login, register, tryAsGuest, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Arriving from an invite link: open on "register" with the invited email filled in.
-  const state = location.state as { from?: string; mode?: "login" | "register"; email?: string } | null;
+  const state = location.state as {
+    from?: string;
+    mode?: "login" | "register";
+    email?: string;
+    signOut?: boolean;
+  } | null;
   const [mode, setMode] = useState<"login" | "register">(state?.mode ?? "login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState(state?.email ?? "");
@@ -16,8 +21,22 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // "Create a real account" from a guest session lands here with signOut: the sign-out
+  // happens on this page, once. Signing out *before* navigating doesn't work: the protected
+  // page re-renders first, its guard redirects to a plain /login, and the "register" mode is lost.
+  const signOutPending = useRef(state?.signOut === true);
+  useEffect(() => {
+    if (signOutPending.current && user) {
+      signOutPending.current = false;
+      logout();
+    }
+  }, [user, logout]);
+
   const from = state?.from ?? "/";
-  if (user) return <Navigate to={from} replace />;
+  // Already signed in when arriving here → go on. Skipped while a sign-in started on this
+  // page is finishing: that handler navigates itself (a guest goes to their demo board,
+  // not `from`), and redirecting here too would race it.
+  if (user && !submitting && !signOutPending.current) return <Navigate to={from} replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,7 +53,21 @@ export function LoginPage() {
     }
   }
 
+  async function tryDemo() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const boardId = await tryAsGuest();
+      navigate(`/boards/${boardId}`, { replace: true });
+    } catch (err) {
+      setError(describeError(err));
+      setSubmitting(false);
+    }
+  }
+
   const isLogin = mode === "login";
+  // Arriving from an invite means joining a specific board, which needs a real account.
+  const fromInvite = state?.from?.startsWith("/invite/") ?? false;
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
@@ -86,6 +119,15 @@ export function LoginPage() {
         >
           {isLogin ? "No account? Register" : "Have an account? Sign in"}
         </button>
+
+        {!fromInvite && (
+          <div className="border-t border-slate-100 pt-4 text-center">
+            <button type="button" onClick={tryDemo} disabled={submitting} className="btn-ghost w-full font-medium text-indigo-600">
+              Just looking? Try the demo, no sign-up
+            </button>
+            <p className="mt-1 text-xs text-slate-400">A temporary account with a sample board, deleted after 24 hours.</p>
+          </div>
+        )}
       </form>
     </main>
   );

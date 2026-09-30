@@ -51,6 +51,26 @@ describe("LoginPage", () => {
     expect(localStorage.getItem("ticketboard.token")).toBeNull();
   });
 
+  it("'Try the demo' signs in as a guest and opens the demo board", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json(201, { token: "guest-jwt", boardId: "b-demo", user: { id: "g1", email: "g@guest.invalid", name: "Guest 1234", isGuest: true } }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/boards/:boardId" element={<p>Demo board page</p>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Try the demo/ }));
+    expect(await screen.findByText("Demo board page")).toBeInTheDocument();
+    expect(localStorage.getItem("ticketboard.token")).toBe("guest-jwt");
+  });
+
   it("switches to the register form", async () => {
     renderLogin();
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
