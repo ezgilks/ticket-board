@@ -7,8 +7,9 @@ import {
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -20,6 +21,7 @@ import { BoardColumn } from "../components/BoardColumn";
 import { BoardSettingsDialog } from "../components/BoardSettingsDialog";
 import { ConfirmDialog } from "../components/Dialog";
 import { FilterBar } from "../components/FilterBar";
+import { BoardSkeleton } from "../components/Loading";
 import { Header } from "../components/Header";
 import { InsightsPanel } from "../components/InsightsPanel";
 import { PresenceAvatars } from "../components/PresenceAvatars";
@@ -124,14 +126,17 @@ export function BoardPage() {
   useBoardSocket(boardId, onEvent, load);
   const viewers = useBoardPresence(boardId);
 
-  // PointerSensor needs 5px of movement before a drag starts, so plain clicks still open the modal.
+  // Mouse: 5px of movement starts a drag, so plain clicks still open the modal.
+  // Touch: press and hold 250ms. On a phone, a swipe has to scroll the board sideways;
+  // if 5px of finger movement started a drag, you could never scroll past the first column.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   if (error) return <p className="p-8 text-red-600">{error}</p>;
-  if (!board) return <p className="p-8 text-slate-500">Loading…</p>;
+  if (!board) return <BoardSkeleton />;
 
   const isOwner = board.ownerId === user?.id;
   // Only rendering is filtered. `board` stays complete, and every drag calculation below
@@ -339,24 +344,29 @@ export function BoardPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    // dvh, not vh: on phones 100vh includes the area behind the browser's address bar.
+    <div className="flex h-dvh flex-col">
       <Header>
-        <div className="flex items-center gap-3">
-          <h1 className="font-semibold">{board.name}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="min-w-0 truncate font-semibold">{board.name}</h1>
           {/* Members = who can open this board. Presence = who has it open right now. */}
-          <span className="text-sm text-slate-400">{board.members.map((m) => m.user.name).join(", ")}</span>
+          <span className="hidden truncate text-sm text-slate-400 md:inline">
+            {board.members.map((m) => m.user.name).join(", ")}
+          </span>
           <PresenceAvatars users={viewers} currentUserId={user?.id} />
-          {isOwner && (
-            <button type="button" onClick={() => setInviting(true)} className="btn-ghost">
-              Share
+          <div className="ml-auto flex shrink-0 items-center sm:ml-0">
+            {isOwner && (
+              <button type="button" onClick={() => setInviting(true)} className="btn-ghost px-2 sm:px-3">
+                Share
+              </button>
+            )}
+            <button type="button" onClick={() => setShowInsights((v) => !v)} className="btn-ghost px-2 sm:px-3">
+              Insights
             </button>
-          )}
-          <button type="button" onClick={() => setShowInsights((v) => !v)} className="btn-ghost">
-            Insights
-          </button>
-          <button type="button" onClick={() => setSettingsOpen(true)} className="btn-ghost">
-            Settings
-          </button>
+            <button type="button" onClick={() => setSettingsOpen(true)} className="btn-ghost px-2 sm:px-3">
+              Settings
+            </button>
+          </div>
         </div>
       </Header>
 

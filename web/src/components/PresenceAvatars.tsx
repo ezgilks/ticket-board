@@ -44,7 +44,7 @@ export function PresenceAvatars({ users, currentUserId }: { users: User[]; curre
           </span>
         )}
       </div>
-      <span className="text-xs text-slate-400">
+      <span className="hidden text-xs text-slate-400 sm:inline">
         {users.length === 1 ? "only you" : `${users.length} viewing`}
       </span>
     </div>

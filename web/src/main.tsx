@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router";
 import "./index.css";
 import App from "./App.tsx";
 import { AuthProvider } from "./auth/AuthContext.tsx";
+import { ColdStartBanner } from "./components/Loading.tsx";
 import { ToastProvider } from "./lib/toast.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -12,6 +13,7 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <ToastProvider>
           <App />
+          <ColdStartBanner />
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

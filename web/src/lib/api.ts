@@ -1,3 +1,4 @@
+import { trackRequest } from "./slowRequests";
 import { currentSocketId } from "./socket";
 import { tokenStore } from "./token";
 
@@ -52,14 +53,19 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
   const socketId = currentSocketId();
   if (socketId) headers["X-Socket-Id"] = socketId;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? null : JSON.stringify(body),
-  });
+  const done = trackRequest(); // drives the "waking up the server" banner
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? null : JSON.stringify(body),
+    });
 
-  if (res.status === 204) return undefined as T;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data);
-  return data as T;
+    if (res.status === 204) return undefined as T;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, data.error ?? `Request failed (${res.status})`, data);
+    return data as T;
+  } finally {
+    done();
+  }
 }

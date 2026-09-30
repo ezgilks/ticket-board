@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { BoardListSkeleton } from "../components/Loading";
 import { api, describeError } from "../lib/api";
 import type { BoardSummary } from "../lib/types";
 import { Header } from "../components/Header";
@@ -45,7 +46,7 @@ export function BoardsPage() {
         </form>
 
         {error && <p className="text-red-600">{error}</p>}
-        {boards === null && !error && <p className="text-slate-500">Loading…</p>}
+        {boards === null && !error && <BoardListSkeleton />}
         {boards?.length === 0 && <p className="text-slate-500">No boards yet — create one above.</p>}
 
         <ul className="grid gap-3 sm:grid-cols-2">
