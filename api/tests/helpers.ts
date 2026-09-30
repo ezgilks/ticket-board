@@ -21,7 +21,7 @@ export async function registerUser(name = "User") {
   const res = await request(app)
     .post("/auth/register")
     .send({ email, password: "password123", name });
-  if (res.status !== 201) throw new Error(`register failed: ${JSON.stringify(res.body)}`);
+  if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.body)}`);
   return { ...res.body.user, email, token: res.body.token as string, auth: `Bearer ${res.body.token}` };
 }
 
