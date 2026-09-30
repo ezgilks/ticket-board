@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { boardsRouter } from "./routes/boards.js";
 import { columnsRouter } from "./routes/columns.js";
 import { healthRouter } from "./routes/health.js";
+import { invitesRouter } from "./routes/invites.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { requireAuth } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
@@ -32,6 +33,9 @@ export function createApp() {
 
   app.use("/health", healthRouter);
   app.use("/auth", authRouter);
+  // Before the requireAuth routes: an invite can be *viewed* signed out (that's how a new
+  // user learns what they're joining). Accepting it requires auth, applied per route.
+  app.use("/invites", invitesRouter);
   // Everything below requires a valid token.
   app.use("/boards", requireAuth, boardsRouter);
   app.use("/columns", requireAuth, columnsRouter);

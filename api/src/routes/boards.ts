@@ -7,6 +7,7 @@ import { userIdOf } from "../middleware/auth.js";
 import { getBoardAnalytics } from "../services/analytics.js";
 import * as boards from "../services/boards.js";
 import * as columns from "../services/columns.js";
+import * as invites from "../services/invites.js";
 import * as tickets from "../services/tickets.js";
 
 export const boardsRouter = Router();
@@ -43,12 +44,27 @@ boardsRouter.delete("/:boardId", async (req, res) => {
   res.status(204).end();
 });
 
+// Existing account → added now. No account → a pending invite and a one-time link.
 boardsRouter.post("/:boardId/members", async (req, res) => {
   const boardId = idParam(req, "boardId");
-  const input = boards.AddMemberInput.parse(req.body);
-  const member = await boards.addMember(userIdOf(req), boardId, input);
-  await publishBoardEvent(boardId, { type: "board:refresh" }, originSocketId(req));
-  res.status(201).json({ member });
+  const input = invites.InviteInput.parse(req.body);
+  const result = await invites.inviteByEmail(userIdOf(req), boardId, input);
+  if (result.kind === "member") {
+    await publishBoardEvent(boardId, { type: "board:refresh" }, originSocketId(req));
+    res.status(201).json({ member: result.member });
+    return;
+  }
+  // The only time the raw token leaves the server. The client builds the link from it.
+  res.status(201).json({ invite: result.invite, token: result.token });
+});
+
+boardsRouter.get("/:boardId/invites", async (req, res) => {
+  res.json({ invites: await invites.listInvites(userIdOf(req), idParam(req, "boardId")) });
+});
+
+boardsRouter.delete("/:boardId/invites/:inviteId", async (req, res) => {
+  await invites.revokeInvite(userIdOf(req), idParam(req, "boardId"), idParam(req, "inviteId"));
+  res.status(204).end();
 });
 
 // Columns and tickets are *created* under their board (so the URL says which board)...

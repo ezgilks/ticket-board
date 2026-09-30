@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { getCachedBoard, setCachedBoard } from "../cache.js";
 import { prisma } from "../db.js";
-import { badRequest, conflict, notFound } from "../lib/errors.js";
+import { notFound } from "../lib/errors.js";
 import { assertMember, assertOwner } from "./access.js";
 
 export const BoardInput = z.object({ name: z.string().trim().min(1).max(100) });
-export const AddMemberInput = z.object({ email: z.email().transform((e) => e.toLowerCase()) });
 
 const DEFAULT_COLUMNS = ["To Do", "In Progress", "Done"];
 
@@ -71,18 +70,4 @@ export async function renameBoard(userId: string, boardId: string, input: z.infe
 export async function deleteBoard(userId: string, boardId: string) {
   await assertOwner(userId, boardId);
   await prisma.board.delete({ where: { id: boardId } });
-}
-
-export async function addMember(userId: string, boardId: string, input: z.infer<typeof AddMemberInput>) {
-  await assertOwner(userId, boardId);
-  const invitee = await prisma.user.findUnique({ where: { email: input.email } });
-  if (!invitee) throw badRequest("No user with that email");
-  const existing = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId: invitee.id } },
-  });
-  if (existing) throw conflict("Already a member");
-  return prisma.boardMember.create({
-    data: { boardId, userId: invitee.id },
-    include: { user: userSummary },
-  });
 }

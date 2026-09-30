@@ -22,6 +22,7 @@ model User {
   boards      Board[]
   tickets     Ticket[]
   memberships BoardMember[]
+  invitesSent BoardInvite[]
 }
 
 model Board {
@@ -30,10 +31,11 @@ model Board {
   createdAt DateTime @default(now())
 
   ownerId String
-  owner   User     @relation(fields: [ownerId], references: [id])
+  owner   User          @relation(fields: [ownerId], references: [id])
   columns Column[]
   tickets Ticket[]
   members BoardMember[]
+  invites BoardInvite[]
 }
 
 // Who can see and edit a board. The owner gets an OWNER row too, so every
@@ -49,6 +51,24 @@ model BoardMember {
 
   @@id([boardId, userId])
   @@index([userId])
+}
+
+// An invitation for someone who may not have an account yet. The link holds a random
+// token; only its SHA-256 hash is stored. Accepting deletes the row, so each link works once.
+model BoardInvite {
+  id        String   @id @default(uuid())
+  email     String
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  boardId     String
+  board       Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User   @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  // Re-inviting the same email replaces the old invite (and its link) rather than stacking.
+  @@unique([boardId, email])
 }
 
 enum MemberRole {

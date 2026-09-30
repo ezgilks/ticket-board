@@ -81,3 +81,18 @@ export interface BoardAnalytics {
   createdPerDay: { day: string; count: number }[];
   aiTriaged: { triaged: number; total: number };
 }
+
+/** An invite waiting for someone without an account (owner's view). */
+export interface PendingInvite {
+  id: string;
+  email: string;
+  expiresAt: string;
+}
+
+/** What an invite link shows before sign-in. */
+export interface InviteInfo {
+  boardName: string;
+  invitedBy: string;
+  email: string;
+  expiresAt: string;
+}

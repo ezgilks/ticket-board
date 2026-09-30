@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api";
 import { ToastProvider, useToast } from "../lib/toast";
-import { ConfirmDialog, InviteDialog } from "./Dialog";
+import { ConfirmDialog } from "./Dialog";
 
 describe("ConfirmDialog", () => {
   it("focuses Cancel, so a stray Enter can't delete anything", () => {
@@ -40,28 +40,6 @@ describe("ConfirmDialog", () => {
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
-  });
-});
-
-describe("InviteDialog", () => {
-  it("keeps the typed email and shows the server's error inline", async () => {
-    const onInvite = vi.fn().mockRejectedValue(new ApiError(400, "No user with that email"));
-    render(<InviteDialog onInvite={onInvite} onClose={vi.fn()} />);
-
-    await userEvent.type(screen.getByLabelText("Email"), "bob@test.com");
-    await userEvent.click(screen.getByRole("button", { name: "Invite" }));
-
-    expect(onInvite).toHaveBeenCalledWith("bob@test.com");
-    expect(await screen.findByRole("alert")).toHaveTextContent("No user with that email");
-    expect(screen.getByLabelText("Email")).toHaveValue("bob@test.com");
-  });
-
-  it("closes once the invite succeeds", async () => {
-    const onClose = vi.fn();
-    render(<InviteDialog onInvite={vi.fn().mockResolvedValue(undefined)} onClose={onClose} />);
-
-    await userEvent.type(screen.getByLabelText("Email"), "bob@test.com{Enter}");
-    expect(onClose).toHaveBeenCalledOnce();
   });
 });
 

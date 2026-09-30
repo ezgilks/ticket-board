@@ -8,7 +8,7 @@ export const app = createApp();
 // Wipe every table between tests so each test starts from a known-empty state.
 export async function resetDb() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "Ticket", "Column", "BoardMember", "Board", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE "Ticket", "Column", "BoardInvite", "BoardMember", "Board", "User" RESTART IDENTITY CASCADE',
   );
   await getRedis()?.flushDb(); // only DB 1 — see vitest.config.ts
 }

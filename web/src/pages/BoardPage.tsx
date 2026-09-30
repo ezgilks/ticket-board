@@ -17,11 +17,12 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { BoardColumn } from "../components/BoardColumn";
-import { ConfirmDialog, InviteDialog } from "../components/Dialog";
+import { ConfirmDialog } from "../components/Dialog";
 import { FilterBar } from "../components/FilterBar";
 import { Header } from "../components/Header";
 import { InsightsPanel } from "../components/InsightsPanel";
 import { PresenceAvatars } from "../components/PresenceAvatars";
+import { ShareDialog } from "../components/ShareDialog";
 import { SimilarTickets } from "../components/SimilarTickets";
 import { TicketCard } from "../components/TicketCard";
 import { type TicketPatch, TicketModal } from "../components/TicketModal";
@@ -29,7 +30,7 @@ import { ApiError, api, describeError } from "../lib/api";
 import { type BoardFilter, boardLabels, filterBoard, filterFromParams, filterToParams, isFiltering } from "../lib/boardFilter";
 import { useToast } from "../lib/toast";
 import { findTicket, moveTicketLocal, removeColumn, removeTicket, upsertColumn, upsertTicket } from "../lib/boardState";
-import type { Board, Column, Ticket } from "../lib/types";
+import type { Board, Column, Member, PendingInvite, Ticket } from "../lib/types";
 import { type BoardEvent, useBoardSocket } from "../lib/useBoardSocket";
 import { useBoardPresence } from "../lib/usePresence";
 
@@ -269,10 +270,14 @@ export function BoardPage() {
     });
   }
 
-  async function invite(email: string) {
-    await api("POST", `/boards/${boardId}/members`, { email });
+  // Existing account → added now. Unknown email → the server returns a one-time token,
+  // and the link is built here, because only the browser knows the site's public origin.
+  async function invite(email: string): Promise<{ link?: string }> {
+    const res = await api<{ member?: Member; token?: string }>("POST", `/boards/${boardId}/members`, { email });
+    if (res.token) return { link: `${window.location.origin}/invite/${res.token}` };
     await load();
     toast.success(`${email} can now open this board`);
+    return {};
   }
 
   return (
@@ -360,7 +365,16 @@ export function BoardPage() {
         </TicketModal>
       )}
 
-      {inviting && <InviteDialog onInvite={invite} onClose={() => setInviting(false)} />}
+      {inviting && (
+        <ShareDialog
+          onInvite={invite}
+          loadPending={async () =>
+            (await api<{ invites: PendingInvite[] }>("GET", `/boards/${boardId}/invites`)).invites
+          }
+          onRevoke={(id) => api("DELETE", `/boards/${boardId}/invites/${id}`)}
+          onClose={() => setInviting(false)}
+        />
+      )}
 
       {/* Rendered after TicketModal so it stacks on top when deleting from inside the modal. */}
       {confirming && <ConfirmDialog {...confirming} onClose={() => setConfirming(null)} />}

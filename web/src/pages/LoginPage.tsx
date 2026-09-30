@@ -7,14 +7,16 @@ export function LoginPage() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  // Arriving from an invite link: open on "register" with the invited email filled in.
+  const state = location.state as { from?: string; mode?: "login" | "register"; email?: string } | null;
+  const [mode, setMode] = useState<"login" | "register">(state?.mode ?? "login");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(state?.email ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const from = state?.from ?? "/";
   if (user) return <Navigate to={from} replace />;
 
   async function onSubmit(e: FormEvent) {
