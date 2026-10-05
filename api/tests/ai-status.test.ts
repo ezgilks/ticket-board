@@ -27,6 +27,7 @@ beforeEach(async () => {
   triageWorks = true;
   fakeAi.calls.embed = 0;
   fakeAi.calls.triage = 0;
+  fakeAi.state.unavailable = 0;
   config.AI_SERVICE_URL = "";
 });
 
@@ -80,6 +81,37 @@ describe("ticket aiStatus", () => {
     expect(res.status).toBe(201); // creation never depends on the AI service
 
     await settled(board.id);
+    const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: res.body.ticket.id } });
+    expect(ticket.aiStatus).toBe("FAILED");
+  });
+
+  // Regression, 2026-10-05: a guest's demo board was enriched while ai-service was still
+  // waking up. The single batched embed failed once and all nine tickets ended FAILED.
+  it("rides out a cold start: retries a 503 instead of failing the seeded board", async () => {
+    const user = await registerUser();
+    config.AI_SERVICE_URL = fakeAi.url;
+    const board = await seedDemoBoard(user.id);
+    fakeAi.state.unavailable = 2; // the first two requests reach a service that isn't up yet
+
+    await enrichSeededBoard(board.id);
+
+    const tickets = await prisma.ticket.findMany({ where: { boardId: board.id } });
+    expect(tickets.every((t) => t.aiStatus === "DONE")).toBe(true);
+  });
+
+  it("does not retry a non-transient error", async () => {
+    const user = await registerUser();
+    const board = await createBoard(user.auth);
+    config.AI_SERVICE_URL = fakeAi.url;
+    triageWorks = false; // the fake answers 500
+
+    const res = await request(app)
+      .post(`/boards/${board.id}/tickets`)
+      .set("Authorization", user.auth)
+      .send({ columnId: board.columns[0].id, title: "Broken provider" });
+    await settled(board.id);
+
+    expect(fakeAi.calls.triage).toBe(1);
     const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: res.body.ticket.id } });
     expect(ticket.aiStatus).toBe("FAILED");
   });

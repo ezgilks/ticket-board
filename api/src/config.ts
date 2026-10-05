@@ -21,6 +21,8 @@ const EnvSchema = z.object({
   AI_SERVICE_URL: z.string().optional(),
   // Shared secret sent to ai-service, which has a public URL in production.
   AI_SERVICE_TOKEN: z.string().optional(),
+  // Base wait between retries of a failed ai-service call (doubles each retry). 0 in tests.
+  AI_RETRY_DELAY_MS: z.coerce.number().int().min(0).default(5000),
   // Give every new account a pre-filled demo board. Off in tests, which assert on
   // exact board lists; the seed itself is covered by its own test.
   SEED_DEMO_BOARD: z.enum(["on", "off"]).default("on"),

@@ -7,6 +7,7 @@ and replaceable.
 
 import hmac
 import os
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
 
@@ -27,7 +28,17 @@ def require_service_token(x_service_token: Annotated[str | None, Header()] = Non
         raise HTTPException(status_code=401, detail="invalid service token")
 
 
-app = FastAPI(title="Ticket Board AI service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load the model before accepting traffic. Lazily, the first /embed after a cold start
+    # paid for container boot AND model load in one request, which outlasted the API's
+    # timeout. Now the boot absorbs it, and a /health ping (keep-alive) warms everything.
+    # Goes through dependency_overrides so a test that swaps in a fake never loads PyTorch.
+    app.dependency_overrides.get(get_embedder, get_embedder)()
+    yield
+
+
+app = FastAPI(title="Ticket Board AI service", lifespan=lifespan)
 
 # Dependency injection: the route asks for "an Embedder"; FastAPI supplies one.
 # Tests override get_embedder with a fake, so they never load the real model.
