@@ -123,6 +123,63 @@ jobs:
             e2e/test-results/
           retention-days: 7
 
+  # The MCP server: unit tests drive every tool through a real MCP client; the integration
+  # test spawns the server over stdio against a real API process (port 3200, DB ticketboard_mcp).
+  mcp-server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ticket
+          POSTGRES_PASSWORD: ticket
+          POSTGRES_DB: ticketboard_mcp
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ticket"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      # prisma generate reads the config file, which needs *a* URL to exist.
+      DATABASE_URL: postgresql://ticket:ticket@localhost:5433/ticketboard_mcp
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            mcp-server/package-lock.json
+
+      # The integration test runs the API from source, so it needs the API's deps too.
+      - run: npm ci
+        working-directory: api
+      - run: npx prisma generate
+        working-directory: api
+      - run: npm ci
+        working-directory: mcp-server
+      - name: Lint
+        run: npm run lint
+        working-directory: mcp-server
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: mcp-server
+      - name: Test
+        run: npm test
+        working-directory: mcp-server
+      - name: Build
+        run: npm run build
+        working-directory: mcp-server
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: mcp-server
+
   web:
     runs-on: ubuntu-latest
     defaults:
