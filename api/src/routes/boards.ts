@@ -9,6 +9,7 @@ import { getBoardAnalytics } from "../services/analytics.js";
 import * as boards from "../services/boards.js";
 import * as columns from "../services/columns.js";
 import * as invites from "../services/invites.js";
+import { SearchInput, searchTickets } from "../services/similar.js";
 import * as tickets from "../services/tickets.js";
 
 export const boardsRouter = Router();
@@ -28,6 +29,12 @@ boardsRouter.get("/:boardId", async (req, res) => {
 
 boardsRouter.get("/:boardId/analytics", async (req, res) => {
   res.json({ analytics: await getBoardAnalytics(userIdOf(req), idParam(req, "boardId")) });
+});
+
+// Semantic search by free text. POST because the query is a body, not a cacheable resource.
+boardsRouter.post("/:boardId/search", async (req, res) => {
+  const input = SearchInput.parse(req.body);
+  res.json({ results: await searchTickets(userIdOf(req), idParam(req, "boardId"), input) });
 });
 
 boardsRouter.patch("/:boardId", async (req, res) => {

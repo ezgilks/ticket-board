@@ -37,6 +37,8 @@ sample board, no sign-up. The free-tier API sleeps when idle, so the first reque
 **Data and APIs**
 - **Board insights** — analytics in raw SQL (`LEFT JOIN`, `unnest`, `generate_series`, `FILTER`).
 - **GraphQL** read API alongside REST, with DataLoader batching to avoid N+1 queries.
+- **MCP server** — an AI assistant (Claude Desktop, Claude Code) can list, search, create, move and
+  triage tickets. It goes through the REST API, so its changes appear live on everyone's board.
 
 **Security**
 - JWT + bcrypt; board membership checked on every REST route, socket room and GraphQL query.
@@ -65,6 +67,8 @@ sample board, no sign-up. The free-tier API sleeps when idle, so the first reque
                │  HTTP
                ▼
             ai-service/  FastAPI (Python) — embeddings + LLM triage, stateless, no DB access
+
+ AI assistant ──stdio──► mcp-server/  MCP (TypeScript SDK) ──REST──► api/
 ```
 
 | | |
@@ -100,13 +104,74 @@ cd web && npm install && npm run dev                  # :5173
 
 No API keys needed: without `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`, triage uses the keyword rules.
 
+## Use it from an AI assistant (MCP)
+
+`mcp-server/` is a [Model Context Protocol](https://modelcontextprotocol.io) server. An assistant
+starts it as a local process and talks to it over stdio; it calls the REST API as you, so board
+membership, validation and real-time updates all apply exactly as in the web app.
+
+| Tool | What it does |
+|---|---|
+| `list_boards` | Boards you're a member of |
+| `list_tickets` | A board's tickets, filtered by column, label, assignee or priority |
+| `get_ticket` | One ticket in full, including the AI's triage suggestion |
+| `search_similar_tickets` | Semantic search by free text, or "tickets like this one" (pgvector) |
+| `create_ticket` | New ticket; AI fills in priority and labels you leave out |
+| `update_ticket` | Edit fields; pass `version` to get a conflict instead of overwriting |
+| `move_ticket` | Move to a column by name, at the bottom or a given position |
+| `triage_ticket` | A fresh AI suggestion for priority and labels, not applied |
+
+It also exposes each board as a resource (`ticketboard://boards/{id}`, Markdown) and a
+`triage_backlog` prompt.
+
+```bash
+cd mcp-server && npm install && npm run build
+npm run inspect          # try it in the MCP Inspector (set the env vars below first)
+```
+
+Configure it with environment variables:
+
+| Variable | |
+|---|---|
+| `TICKETBOARD_API_URL` | API base URL. `http://localhost:3000` (default) for `npm run dev`, `http://localhost:8080/api` for the Compose stack |
+| `TICKETBOARD_EMAIL` + `TICKETBOARD_PASSWORD` | Your account; the server signs in and signs in again when the 7-day token expires |
+| `TICKETBOARD_TOKEN` | Or a token, e.g. a guest's: `localStorage["ticketboard.token"]` in the browser. Can't be renewed |
+
+**Claude Code:**
+
+```bash
+claude mcp add ticketboard -e TICKETBOARD_EMAIL=you@example.com -e TICKETBOARD_PASSWORD=... -- node /absolute/path/to/ticket-board/mcp-server/dist/index.js
+```
+
+**Claude Desktop** — add to `claude_desktop_config.json` (Settings → Developer → Edit Config), then restart:
+
+```json
+{
+  "mcpServers": {
+    "ticketboard": {
+      "command": "node",
+      "args": ["/absolute/path/to/ticket-board/mcp-server/dist/index.js"],
+      "env": {
+        "TICKETBOARD_API_URL": "http://localhost:3000",
+        "TICKETBOARD_EMAIL": "you@example.com",
+        "TICKETBOARD_PASSWORD": "..."
+      }
+    }
+  }
+}
+```
+
+The password sits in plain text in that file, as with any MCP server's credentials. Use an account
+made for the purpose, or a token.
+
 ## Tests
 
 ```bash
-cd api && npm test            # 82 tests against real Postgres + Redis (docker compose up -d first)
+cd api && npm test            # 91 tests against real Postgres + Redis (docker compose up -d first)
 cd web && npm test            # 67 component and state tests
 cd ai-service && .venv/bin/pytest            # 17 tests; RUN_MODEL_TESTS=1 also runs the real model
 cd e2e && npm test            # 6 end-to-end browser tests (Playwright) against the real stack
+cd mcp-server && npm test     # 32 tests: every MCP tool through a real MCP client, plus stdio against a real API
 ```
 
 The end-to-end suite starts its own API and web server on separate ports with its own database,

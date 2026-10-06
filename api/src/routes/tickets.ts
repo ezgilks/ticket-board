@@ -4,10 +4,15 @@ import { publishBoardEvent } from "../events.js";
 import { originSocketId } from "../lib/origin.js";
 import { idParam } from "../lib/params.js";
 import { userIdOf } from "../middleware/auth.js";
+import { triageRateLimit } from "../middleware/rateLimit.js";
 import { findSimilarTickets } from "../services/similar.js";
 import * as tickets from "../services/tickets.js";
 
 export const ticketsRouter = Router();
+
+ticketsRouter.get("/:ticketId", async (req, res) => {
+  res.json({ ticket: await tickets.getTicket(userIdOf(req), idParam(req, "ticketId")) });
+});
 
 ticketsRouter.patch("/:ticketId", async (req, res) => {
   const input = tickets.UpdateTicketInput.parse(req.body);
@@ -20,6 +25,11 @@ ticketsRouter.patch("/:ticketId", async (req, res) => {
 
 ticketsRouter.get("/:ticketId/similar", async (req, res) => {
   res.json({ similar: await findSimilarTickets(userIdOf(req), idParam(req, "ticketId")) });
+});
+
+// A fresh suggestion, not applied. See suggestTriage.
+ticketsRouter.post("/:ticketId/triage", triageRateLimit, async (req, res) => {
+  res.json({ suggestion: await tickets.suggestTriage(userIdOf(req), idParam(req, "ticketId")) });
 });
 
 ticketsRouter.post("/:ticketId/move", async (req, res) => {

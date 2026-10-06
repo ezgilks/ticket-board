@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { aiEnabled } from "../ai/client.js";
+import { aiEnabled, triage } from "../ai/client.js";
 import { prisma } from "../db.js";
-import { badRequest, conflict, notFound } from "../lib/errors.js";
+import { badRequest, conflict, HttpError, notFound } from "../lib/errors.js";
 import { assertMember, assertTicketAccess } from "./access.js";
 
 const Priority = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
@@ -46,6 +46,30 @@ async function assertAssignable(assigneeId: string | null | undefined, boardId: 
     where: { boardId_userId: { boardId, userId: assigneeId } },
   });
   if (!m) throw badRequest("Assignee is not a member of this board");
+}
+
+/** One ticket, with its column's name — for clients that work ticket by ticket rather than board by board. */
+export async function getTicket(userId: string, ticketId: string) {
+  await assertTicketAccess(userId, ticketId);
+  return prisma.ticket.findUniqueOrThrow({
+    where: { id: ticketId },
+    include: { ...withAssignee, column: { select: { id: true, name: true } } },
+  });
+}
+
+/**
+ * Ask the LLM again, on demand. Returns the suggestion and changes nothing: whoever asked
+ * (a person or an assistant) decides whether to apply it with an ordinary update.
+ */
+export async function suggestTriage(userId: string, ticketId: string) {
+  const ticket = await assertTicketAccess(userId, ticketId);
+  if (!aiEnabled()) throw new HttpError(503, "AI triage is not configured on this server");
+  try {
+    return await triage(ticket.title, ticket.description);
+  } catch (err) {
+    console.error(`[ai] on-demand triage failed for ${ticketId}:`, err instanceof Error ? err.message : err);
+    throw new HttpError(503, "The AI service is unavailable. Try again in a minute.");
+  }
 }
 
 export async function createTicket(userId: string, boardId: string, input: z.infer<typeof CreateTicketInput>) {
