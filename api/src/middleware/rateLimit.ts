@@ -23,3 +23,15 @@ export const guestRateLimit = rateLimit({
   skip: () => config.NODE_ENV === "test" && process.env["RATE_LIMIT_IN_TESTS"] !== "1",
   message: { error: "Too many demo accounts from this network. Try again later or register." },
 });
+
+// On-demand triage spends the same LLM quota, and unlike creation nothing else slows it down.
+// Behind requireAuth, so it's keyed per user rather than per IP.
+export const triageRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? "anonymous",
+  skip: () => config.NODE_ENV === "test" && process.env["RATE_LIMIT_IN_TESTS"] !== "1",
+  message: { error: "Too many triage requests, try again later" },
+});
