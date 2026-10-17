@@ -1,5 +1,5 @@
 # Build the static site, then serve it with nginx.
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
