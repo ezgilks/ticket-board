@@ -5,5 +5,5 @@ uvicorn[standard]==0.37.*
 pydantic==2.*
 httpx==0.28.*
 anthropic>=1.5,<2
-sentence-transformers==5.*
+sentence-transformers==6.*
 torch==2.*
