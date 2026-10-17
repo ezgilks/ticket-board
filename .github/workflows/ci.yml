@@ -114,7 +114,7 @@ jobs:
         run: npm test
         working-directory: e2e
       # On failure, keep the HTML report and traces: a step-by-step replay of what broke.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
